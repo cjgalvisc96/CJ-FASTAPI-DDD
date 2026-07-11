@@ -26,6 +26,8 @@ namespaced Redis cache) while dropping the heavyweight tactical patterns.
 - [Bounded Contexts](architecture/bounded-contexts.md) and [Layering](architecture/layering.md).
 - [Cross-Context Contracts](architecture/contracts.md) — how contexts talk without importing each other.
 - [Persistence & CQRS](architecture/persistence.md) — async sessions and transactions.
+- [Middleware](architecture/middleware.md) — rate limiting + request body-size cap.
+- [Infrastructure (AWS)](operations/infrastructure.md) — serverless Terraform/Terragrunt stack.
 - [Development Setup](development/setup.md) — get it running.
 
 ## Quick start

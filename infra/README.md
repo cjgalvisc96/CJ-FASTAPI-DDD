@@ -172,8 +172,8 @@ terragrunt plan
 ```
 
 `prod` and `local` are identical — `cd terragrunt/<env> && terragrunt stack generate && terragrunt stack run plan`.
-For `local`, start floci first (`task docker:up`); its `env.hcl` sets `use_floci = true`, so
-`root.hcl` generates the floci provider (endpoints → `http://localhost:4566`) and a local
+For `local`, start floci first (`task floci:up`); its `env.hcl` sets `use_floci = true`, so
+`root.hcl` generates the floci provider (endpoints → `http://localhost:14566`) and a local
 state backend instead of S3/DynamoDB.
 
 ### Taskfile targets

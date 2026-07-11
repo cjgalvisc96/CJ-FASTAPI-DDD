@@ -49,10 +49,12 @@ nav:
       - Persistence & CQRS: architecture/persistence.md
       - Auth & RBAC (Keycloak): architecture/auth-rbac.md
       - Caching (Redis): architecture/caching.md
+      - Middleware: architecture/middleware.md
   - Development:
       - Setup: development/setup.md
       - Testing: development/testing.md
       - Governance: development/governance.md
   - Operations:
       - Docker Stack: operations/docker.md
+      - Infrastructure (AWS): operations/infrastructure.md
       - CI: operations/ci.md
