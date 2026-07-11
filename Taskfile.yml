@@ -187,22 +187,22 @@ tasks:
   terragrunt:init:
     desc: "Generate the stack + init (ENV=dev|prod|local)"
     cmds:
-      - cd {{.TG_DIR}}/{{.ENV}} && terragrunt stack generate && terragrunt stack run init --terragrunt-non-interactive
+      - cd {{.TG_DIR}}/{{.ENV}} && terragrunt stack generate && terragrunt stack run init --non-interactive
 
   terragrunt:plan:
     desc: "Generate the stack + plan (ENV=dev|prod|local)"
     cmds:
-      - cd {{.TG_DIR}}/{{.ENV}} && terragrunt stack generate && terragrunt stack run plan --terragrunt-non-interactive
+      - cd {{.TG_DIR}}/{{.ENV}} && terragrunt stack generate && terragrunt stack run plan --non-interactive
 
   terragrunt:apply:
     desc: "Generate the stack + apply (ENV=dev|prod|local)"
     cmds:
-      - cd {{.TG_DIR}}/{{.ENV}} && terragrunt stack generate && terragrunt stack run apply --terragrunt-non-interactive
+      - cd {{.TG_DIR}}/{{.ENV}} && terragrunt stack generate && terragrunt stack run apply --non-interactive
 
   terragrunt:destroy:
     desc: "Generate the stack + destroy (ENV=dev|prod|local)"
     cmds:
-      - cd {{.TG_DIR}}/{{.ENV}} && terragrunt stack generate && terragrunt stack run destroy --terragrunt-non-interactive
+      - cd {{.TG_DIR}}/{{.ENV}} && terragrunt stack generate && terragrunt stack run destroy --non-interactive
 
   terragrunt:trivy:
     desc: Trivy IaC misconfig scan of the Terraform (HIGH/CRITICAL, honors infra/.trivyignore)
