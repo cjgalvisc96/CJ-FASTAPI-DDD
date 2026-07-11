@@ -100,6 +100,8 @@ services:
       REDIS_PORT: "6379"
       KEYCLOAK_URL: http://keycloak:8080
       API_PORT: "8000"   # container listens on 8000; host maps it to APP_HOST_PORT (18000)
+      # In-network OTLP endpoint (the lgtm service ships with the stack); disable via OTEL_ENABLE.
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
     ports:
       - "${APP_HOST_PORT:-18000}:8000"
     volumes:
@@ -113,6 +115,28 @@ services:
         condition: service_healthy
       atlas:
         condition: service_completed_successfully
+      # started (not healthy) — the OTel batch exporters retry, so no need to block on Grafana boot.
+      lgtm:
+        condition: service_started
+
+  # All-in-one observability backend (Grafana + Tempo + Loki + Prometheus + OTLP collector) for the
+  # app's OpenTelemetry logs/metrics/traces — the "reports" UI, part of the default stack.
+  # Grafana → http://localhost:13000 (admin/admin).
+  lgtm:
+    image: grafana/otel-lgtm:latest
+    container_name: cj-fastapi-ddd-lgtm
+    ports:
+      - "${GRAFANA_HOST_PORT:-13000}:3000"
+      - "${OTLP_GRPC_HOST_PORT:-14317}:4317"
+      - "${OTLP_HTTP_HOST_PORT:-14318}:4318"
+    networks:
+      - ddd-net
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/3000 && echo ok >&3 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
 
   # Local AWS emulator for exercising the Terraform/Terragrunt stack offline.
   # Start on demand (docker compose --profile infra up -d floci, or task floci:up); target it with

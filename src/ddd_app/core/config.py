@@ -55,6 +55,11 @@ class Settings(BaseSettings):
     cors_allow_methods: str = "*"
     cors_allow_headers: str = "*"
 
+    # OpenTelemetry — exports to an OTLP/HTTP collector (the compose stack ships Grafana LGTM).
+    otel_enable: bool = False
+    otel_exporter_otlp_endpoint: str = "http://localhost:14318"
+    otel_service_name: str = "cj-fastapi-ddd"
+
     @cached_property
     def database_dsn(self) -> str:
         return (

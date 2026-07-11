@@ -57,4 +57,5 @@ nav:
   - Operations:
       - Docker Stack: operations/docker.md
       - Infrastructure (AWS): operations/infrastructure.md
+      - Telemetry (OpenTelemetry): operations/telemetry.md
       - CI: operations/ci.md

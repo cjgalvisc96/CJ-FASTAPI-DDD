@@ -51,6 +51,8 @@ dependency-injector · Atlas (migrations) · pytest · ruff · pyright · import
 - **Quality gate**: `task check:all` runs ruff, pyright, import-linter, vulture, and bandit;
   `task test:coverage` runs the parallel/random test suite (coverage ≥ 97%); `task trivy` scans the
   app for dependency CVEs, secrets, and Dockerfile misconfig.
+- **Telemetry**: OpenTelemetry logs + metrics + traces (`src/ddd_app/core/telemetry/`, opt-in via
+  `OTEL_ENABLE`), viewed in Grafana at http://localhost:13000 (ships with `task docker:up`).
 - **Docs**: a full MkDocs Material site under `docs/` — `task docs:serve` → http://127.0.0.1:8002.
 
 ## Quick start

@@ -7,12 +7,15 @@ import os
 from ddd_app.core.config import get_settings
 from ddd_app.core.di.container import build_container
 from ddd_app.core.logging import configure_logging
+from ddd_app.core.telemetry import setup_telemetry
 from ddd_app.presentation.api.app import create_app
 
 settings = get_settings()
 configure_logging(settings.log_level)
 container = build_container(settings)
 app = create_app(settings=settings, container=container)
+# Bolted on after create_app so app assembly stays transport-pure. No-op unless OTEL_ENABLE=true.
+setup_telemetry(app, settings)
 
 
 def main() -> None:

@@ -13,6 +13,7 @@ default bridge.
 | `keycloak` | `quay.io/keycloak/keycloak:26.0` | **18080** → 8080 | OIDC provider; imports realm `ddd` on start (`--import-realm`). |
 | `atlas` | `arigaio/atlas:latest` | — | **One-shot** migration runner. |
 | `app` | multi-stage `Dockerfile` (`dev` target) | **18000** → 8000 | The FastAPI application. |
+| `lgtm` | `grafana/otel-lgtm:latest` | **13000** → 3000, **14317/14318** → 4317/4318 | Observability backend (Grafana + Tempo + Loki + Prometheus); receives the app's [OpenTelemetry data](telemetry.md). |
 | `floci` | `floci/floci:latest` (`infra` profile) | **14566** → 4566 | On-demand local AWS emulator for `ENV=local`. |
 
 !!! note "Host ports are offset (+10000) so this stack coexists with sibling projects"
