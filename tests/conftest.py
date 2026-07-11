@@ -22,10 +22,10 @@ _SQLITE_CONFIG = {
     "redis_dsn": "redis://localhost:6379/0",  # unused — the redis provider is overridden below
     "cache_enable": False,
     "cache_namespace_list": ["users"],
-    "keycloak_url": "http://localhost:8080",
-    "keycloak_realm": "ddd",
-    "keycloak_client_id": "ddd-api",
     "keycloak_verify_audience": False,
+    "oidc_issuer_effective": "http://localhost:8080/realms/ddd",
+    "oidc_jwks_url_effective": "http://localhost:8080/realms/ddd/protocol/openid-connect/certs",
+    "oidc_client_id_effective": "ddd-api",
 }
 
 

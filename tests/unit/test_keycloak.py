@@ -81,7 +81,10 @@ def authenticator(rsa_material: dict, monkeypatch: pytest.MonkeyPatch) -> Keyclo
 
     monkeypatch.setattr(kc_module.httpx, "AsyncClient", fake_async_client)
     return KeycloakAuthenticator(
-        server_url="http://kc:8080", realm="ddd", client_id=_CLIENT, verify_audience=True
+        issuer=_ISSUER,
+        jwks_url=f"{_ISSUER}/protocol/openid-connect/certs",
+        client_id=_CLIENT,
+        verify_audience=True,
     )
 
 
@@ -143,3 +146,38 @@ async def test_prefers_preferred_username_when_no_email(
     token = _make_token(rsa_material, email=None, preferred_username="ada")
     claims = await authenticator.verify(token)
     assert claims.email == "ada"
+
+
+# --- Cognito compatibility ---------------------------------------------------
+
+
+async def test_cognito_groups_map_to_roles(
+    authenticator: KeycloakAuthenticator, rsa_material: dict
+) -> None:
+    """A Cognito-shaped token (no realm_access, roles in cognito:groups) yields the same roles."""
+    token = _make_token(rsa_material, realm_access=None, **{"cognito:groups": ["Admin", "member"]})
+    claims = await authenticator.verify(token)
+    assert claims.roles == frozenset({"admin", "member"})
+
+
+async def test_cognito_issuer_shape_works(
+    rsa_material: dict, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The verifier takes explicit issuer/JWKS URLs, so Cognito's URL shape needs no code change."""
+    cognito_issuer = "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_Abc123"
+
+    def fake_async_client(*args, **kwargs) -> _FakeClient:
+        return _FakeClient(rsa_material["jwks"])
+
+    monkeypatch.setattr(kc_module.httpx, "AsyncClient", fake_async_client)
+    authenticator = KeycloakAuthenticator(
+        issuer=cognito_issuer,
+        jwks_url=f"{cognito_issuer}/.well-known/jwks.json",
+        client_id=_CLIENT,
+        verify_audience=False,
+    )
+    token = _make_token(
+        rsa_material, iss=cognito_issuer, realm_access=None, **{"cognito:groups": ["admin"]}
+    )
+    claims = await authenticator.verify(token)
+    assert claims.roles == frozenset({"admin"})

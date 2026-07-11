@@ -62,6 +62,12 @@ async def test_missing_credentials_is_401(client: AsyncClient) -> None:
     assert resp.status_code == 401
 
 
+@pytest.mark.parametrize("params", ["limit=0", "limit=201", "limit=999999", "offset=-1"])
+async def test_pagination_bounds_rejected(client: AsyncClient, params: str) -> None:
+    resp = await client.get(f"/api/v1/users?{params}", headers=MEMBER)
+    assert resp.status_code == 422
+
+
 async def test_non_admin_cannot_create_403(client: AsyncClient) -> None:
     resp = await client.post(
         "/api/v1/users",

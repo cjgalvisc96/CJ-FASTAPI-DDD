@@ -37,11 +37,12 @@ so there's one artifact for local and cloud.
 Each module has `variables.tf`/`main.tf`/`outputs.tf`/`versions.tf`. **Provider blocks live only in
 Terragrunt-generated files**, never in the modules.
 
-!!! note "Cognito vs. Keycloak"
-    The stack provisions **Cognito** as the serverless-native OIDC IdP, but the app currently ships a
-    **Keycloak**-specific verifier (roles from `realm_access.roles`; Cognito uses `cognito:groups`). The
-    `api` module takes `oidc_issuer`/`oidc_client_id`/`oidc_jwks_url` as plain variables, so you can
-    point it at a Keycloak realm with no code change, or add a small `cognito:groups` claims adapter.
+!!! note "Cognito or Keycloak — both work"
+    The stack provisions **Cognito** as the serverless-native OIDC IdP, and the app's verifier is
+    **IdP-agnostic**: it takes explicit `OIDC_ISSUER`/`OIDC_JWKS_URL`/`OIDC_CLIENT_ID` (injected by the
+    `api` module) and reads roles from `realm_access.roles` (Keycloak) **and/or** `cognito:groups`
+    (Cognito). Point the same variables at a hosted Keycloak realm to switch IdPs with no code change.
+    See [Auth & RBAC](../architecture/auth-rbac.md).
 
 ## Terragrunt Stacks (DRY)
 

@@ -44,6 +44,12 @@ class Settings(BaseSettings):
     keycloak_client_id: str = "ddd-api"
     keycloak_verify_audience: bool = False
 
+    # Optional explicit OIDC overrides (e.g. AWS Cognito, which has no /realms/<x> URL shape).
+    # When empty, the effective values below are derived from the Keycloak settings.
+    oidc_issuer: str = ""
+    oidc_jwks_url: str = ""
+    oidc_client_id: str = ""
+
     # CORS
     cors_allow_origins: str = "*"
     cors_allow_methods: str = "*"
@@ -81,12 +87,28 @@ class Settings(BaseSettings):
     def cors_header_list(self) -> list[str]:
         return self._split(self.cors_allow_headers)
 
+    # Effective OIDC values: explicit overrides win; otherwise derived from the Keycloak realm.
+    @property
+    def oidc_issuer_effective(self) -> str:
+        return self.oidc_issuer or f"{self.keycloak_url.rstrip('/')}/realms/{self.keycloak_realm}"
+
+    @property
+    def oidc_jwks_url_effective(self) -> str:
+        return self.oidc_jwks_url or f"{self.oidc_issuer_effective}/protocol/openid-connect/certs"
+
+    @property
+    def oidc_client_id_effective(self) -> str:
+        return self.oidc_client_id or self.keycloak_client_id
+
     def as_provider_dict(self) -> dict:
         """Flatten settings (incl. derived DSNs/lists) for the DI Configuration provider."""
         data = self.model_dump()
         data["database_dsn"] = self.database_dsn
         data["redis_dsn"] = self.redis_dsn
         data["cache_namespace_list"] = self.cache_namespace_list
+        data["oidc_issuer_effective"] = self.oidc_issuer_effective
+        data["oidc_jwks_url_effective"] = self.oidc_jwks_url_effective
+        data["oidc_client_id_effective"] = self.oidc_client_id_effective
         return data
 
 

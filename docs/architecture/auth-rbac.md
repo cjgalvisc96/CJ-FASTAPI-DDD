@@ -14,8 +14,15 @@ token:
 - **Expiry** — enforced by the JWT decode; **audience** is optional (`verify_audience`).
 
 On success it extracts `KeycloakClaims`: `sub → user_id` (UUID), `email` (or `preferred_username`),
-and roles from `realm_access.roles` (lower-cased). It is framework-free — it raises the shared
-`AuthenticationError` and knows nothing about HTTP.
+and roles from `realm_access.roles` **and/or** `cognito:groups` (lower-cased). It is framework-free —
+it raises the shared `AuthenticationError` and knows nothing about HTTP.
+
+!!! note "IdP-agnostic (Cognito-compatible)"
+    The issuer/JWKS URLs above are the **defaults derived from the Keycloak settings**. Setting
+    `OIDC_ISSUER`, `OIDC_JWKS_URL`, and `OIDC_CLIENT_ID` overrides them, so the same verifier works
+    against AWS Cognito (whose issuer is `https://cognito-idp.<region>.amazonaws.com/<pool>` and whose
+    roles arrive in the `cognito:groups` claim) — this is what the
+    [AWS stack](../operations/infrastructure.md) injects.
 
 ```mermaid
 sequenceDiagram

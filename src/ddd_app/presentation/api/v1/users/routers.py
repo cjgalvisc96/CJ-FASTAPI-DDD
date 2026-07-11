@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ddd_app.contexts.shared.application.request_context import RequestContext
@@ -46,8 +46,8 @@ async def register_user(
 
 @router.get("", response_model=PageResponse[UserResponse])
 async def list_users(
-    limit: int = 50,
-    offset: int = 0,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     _ctx: RequestContext = Depends(get_request_context),
     container=Depends(get_container),
     session: AsyncSession = Depends(get_session),

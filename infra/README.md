@@ -31,23 +31,20 @@ Provider blocks live **only** in Terragrunt-generated files, never in the module
 
 ## Cognito vs. Keycloak (auth note)
 
-This stack ships a **Cognito** user pool as the serverless-native OIDC IdP. The application
-currently ships a **Keycloak-specific** token verifier that reads roles from
-`realm_access.roles`. Cognito instead issues roles via the **`cognito:groups`** claim.
-
-To use Cognito, add a small claims adapter mapping `cognito:groups` → the roles the app
-expects. Until that lands, you can point `oidc_issuer`/`oidc_jwks_url` at a Keycloak realm
-instead — the `api` module takes them as plain variables, so no code change is needed to
-switch IdPs. The `cognito` module is kept here to document the serverless-native option
-(no Keycloak servers to run or patch). See the header comment in
-`terraform/modules/cognito/main.tf`.
+This stack ships a **Cognito** user pool as the serverless-native OIDC IdP, and the app's
+verifier is **IdP-agnostic**: it accepts explicit `OIDC_ISSUER` / `OIDC_JWKS_URL` /
+`OIDC_CLIENT_ID` (which the `api` module injects from the cognito module's outputs) and reads
+roles from `realm_access.roles` (Keycloak) **and/or** `cognito:groups` (Cognito). Pointing the
+same variables at a hosted Keycloak realm switches IdPs with no code change. The `cognito`
+module documents the serverless-native option (no Keycloak servers to run or patch).
 
 ## App container contract
 
 - Listens on port **8000**, exposes `GET /health`.
 - Console script `ddd-api` runs uvicorn locally; the image CMD is overridable.
-- On Lambda it runs behind **Mangum**; the handler is passed as the `LAMBDA_HANDLER` env
-  var (default `app.main.handler`) and the CMD can be overridden via `image_command`.
+- On Lambda it runs behind **Mangum**: the `lambda` Docker stage bakes
+  `ENTRYPOINT python -m awslambdaric` + `CMD ddd_app.presentation.api.lambda_handler.handler`;
+  `image_command` / `LAMBDA_HANDLER` can override the handler if ever needed.
 - Runtime env vars wired by the `api` module: `DB_HOST/DB_PORT/DB_NAME/DB_SECRET_ARN`,
   `REDIS_HOST/REDIS_PORT`, `OIDC_ISSUER/OIDC_CLIENT_ID/OIDC_JWKS_URL`, `APP_PORT`.
   DB user/password are fetched at runtime from `DB_SECRET_ARN` (not baked into env).

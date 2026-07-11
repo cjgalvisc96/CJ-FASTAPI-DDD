@@ -83,7 +83,7 @@ dependency "cognito" {
 
 inputs = {
   name_prefix          = values.name_prefix
-  lambda_handler       = "app.main.handler"
+  lambda_handler       = "ddd_app.presentation.api.lambda_handler.handler"
   memory_size          = 512
   timeout              = 30
   reserved_concurrency = values.reserved_concurrency

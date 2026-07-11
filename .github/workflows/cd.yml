@@ -117,7 +117,18 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+      # Immutable, git-SHA-tagged app image; the api unit reads IMAGE_TAG via get_env() so the same
+      # tag flows into the Lambda's image_uri on apply.
+      # DISABLED for now — re-enable (remove `if: false`) together with the deploy gate. Until then,
+      # push manually with: IMAGE_TAG=<sha> task terragrunt:push-image ENV=<env>
+      - name: Build + push app image (Lambda stage)
+        if: false
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: task terragrunt:push-image ENV=${{ env.ENV }}
       - name: Terragrunt apply
+        env:
+          IMAGE_TAG: ${{ github.sha }}
         run: task terragrunt:apply ENV=${{ env.ENV }}
       # Apply DB migrations as a one-off Fargate task, after infra exists and before serving traffic.
       - name: Run DB migrations (Fargate Atlas task)

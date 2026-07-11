@@ -31,3 +31,13 @@ RUN useradd --uid 1000 --create-home appuser
 USER appuser
 EXPOSE 8000
 CMD ["ddd-api"]
+
+# AWS Lambda container image: awslambdaric (runtime interface client) drives the Mangum-wrapped app
+# (ddd_app.presentation.api.lambda_handler). The venv already contains the project wheel plus the
+# `aws` dependency group (mangum, boto3, awslambdaric) from the builder.
+FROM base AS lambda
+COPY --from=builder /opt/venv /opt/venv
+RUN useradd --uid 1000 --create-home appuser
+USER appuser
+ENTRYPOINT ["python", "-m", "awslambdaric"]
+CMD ["ddd_app.presentation.api.lambda_handler.handler"]

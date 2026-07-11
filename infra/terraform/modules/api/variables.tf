@@ -11,7 +11,7 @@ variable "image_uri" {
 variable "lambda_handler" {
   description = "Mangum handler exposed via env var; the container CMD is overridable to point at it."
   type        = string
-  default     = "app.main.handler"
+  default     = "ddd_app.presentation.api.lambda_handler.handler"
 }
 
 variable "image_command" {

@@ -1,8 +1,10 @@
-"""Keycloak OIDC token verifier (RS256, JWKS-cached) providing auth + RBAC.
+"""OIDC token verifier (RS256, JWKS-cached) providing auth + RBAC.
 
-Verifies the access token's signature against the realm's published JWKS, checks issuer/expiry (and
-optionally audience), then extracts the caller's identity and realm roles. Framework-agnostic: it
-raises the shared `AuthenticationError` and knows nothing about HTTP.
+Verifies the access token's signature against the IdP's published JWKS, checks issuer/expiry (and
+optionally audience), then extracts the caller's identity and roles. Built for Keycloak but
+IdP-agnostic: the issuer/JWKS URLs are injected (Cognito's URL shape works too), and roles are read
+from Keycloak's ``realm_access.roles`` and/or Cognito's ``cognito:groups``. Framework-agnostic: it
+raises the shared `AuthenticationError` and knows nothing about HTTP serving.
 """
 
 from __future__ import annotations
@@ -31,14 +33,13 @@ class KeycloakAuthenticator:
     def __init__(
         self,
         *,
-        server_url: str,
-        realm: str,
+        issuer: str,
+        jwks_url: str,
         client_id: str,
         verify_audience: bool = False,
     ) -> None:
-        base = server_url.rstrip("/")
-        self._issuer = f"{base}/realms/{realm}"
-        self._jwks_url = f"{self._issuer}/protocol/openid-connect/certs"
+        self._issuer = issuer.rstrip("/")
+        self._jwks_url = jwks_url
         self._client_id = client_id
         self._verify_audience = verify_audience
         self._jwks: dict | None = None
@@ -90,10 +91,13 @@ class KeycloakAuthenticator:
             subject = UUID(str(raw_sub))
         except ValueError as exc:
             raise AuthenticationError(f"Non-UUID subject: {raw_sub}") from exc
+        # Keycloak carries roles in realm_access.roles; Cognito in cognito:groups. Union both so the
+        # same verifier works against either IdP.
         realm_roles = (claims.get("realm_access") or {}).get("roles") or []
+        cognito_groups = claims.get("cognito:groups") or []
         email = claims.get("email") or claims.get("preferred_username")
         return KeycloakClaims(
             subject=subject,
             email=email,
-            roles=frozenset(str(r).lower() for r in realm_roles),
+            roles=frozenset(str(r).lower() for r in [*realm_roles, *cognito_groups]),
         )

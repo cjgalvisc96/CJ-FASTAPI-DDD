@@ -224,6 +224,23 @@ tasks:
     cmds:
       - infracost breakdown --path {{.TG_DIR}}/{{.ENV}} --format table
 
+  terragrunt:push-image:
+    desc: "Build+push the app Lambda image to the api ECR repo (ENV=dev|prod; IMAGE_TAG env, default latest)"
+    cmds:
+      - cd {{.TG_DIR}}/{{.ENV}} && terragrunt stack generate
+      - |
+        set -euo pipefail
+        TAG="${IMAGE_TAG:-latest}"
+        cd {{.TG_DIR}}/{{.ENV}}/.terragrunt-stack/ecr
+        # Bootstrap-safe: ensure the repo exists before the first full apply needs the image.
+        terragrunt apply -auto-approve --non-interactive >/dev/null
+        REPO=$(terragrunt output -raw repository_url)
+        REGISTRY="${REPO%%/*}"
+        echo "→ building + pushing app Lambda image to $REPO:$TAG"
+        aws ecr get-login-password | docker login --username AWS --password-stdin "$REGISTRY"
+        docker build -f {{.TASKFILE_DIR}}/Dockerfile --target lambda -t "$REPO:$TAG" {{.TASKFILE_DIR}}
+        docker push "$REPO:$TAG"
+
   terragrunt:migrate:
     desc: "Build+push the migrate image and run the Fargate Atlas task (ENV=dev|prod; needs AWS creds + applied infra)"
     cmds:

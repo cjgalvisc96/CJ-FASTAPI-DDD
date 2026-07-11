@@ -32,10 +32,11 @@ class UsersContainer(containers.DeclarativeContainer):
     get_user_query = providers.Factory(GetUserByIdQuery, repository=user_repository)
     list_users_query = providers.Factory(ListUsersQuery, repository=user_repository)
 
+    # Effective OIDC endpoints: explicit OIDC_* overrides (e.g. Cognito) or Keycloak-derived.
     keycloak_authenticator = providers.Singleton(
         KeycloakAuthenticator,
-        server_url=config.keycloak_url,
-        realm=config.keycloak_realm,
-        client_id=config.keycloak_client_id,
+        issuer=config.oidc_issuer_effective,
+        jwks_url=config.oidc_jwks_url_effective,
+        client_id=config.oidc_client_id_effective,
         verify_audience=config.keycloak_verify_audience,
     )
