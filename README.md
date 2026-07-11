@@ -84,6 +84,16 @@ Bounded contexts **never import each other**. They communicate only through cont
 So the dependency direction is always *context → shared kernel*, never context → sibling context. The
 only file that sees two contexts at once is the composition root.
 
+## Documentation
+
+A full MkDocs Material site lives under `docs/` (architecture, middleware, infrastructure,
+development, operations):
+
+```bash
+task docs:serve   # serve locally → http://127.0.0.1:8002
+task docs:build   # build the static site (--strict)
+```
+
 ## Quality gate
 
 ```bash

@@ -19,6 +19,7 @@ flowchart LR
 | --- | --- | --- |
 | `quality` | `task check:all` | ruff (incl. `S`/bandit rules), pyright, import-linter, vulture, or bandit finds an issue |
 | `test` | `task test:coverage` | any test fails, or coverage drops below the **97% gate** |
+| `migrations` | `task atlas:validate` | a migration was changed without re-running `task atlas:hash` (stale/tampered `atlas.sum`) |
 | `trivy` | `task trivy` | a dependency CVE, secret, or Dockerfile misconfig is found |
 
 !!! note

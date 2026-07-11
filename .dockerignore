@@ -1,0 +1,18 @@
+# Keep the build context small — none of these belong in any image.
+.git
+.venv
+site/
+**/__pycache__/
+.pytest_cache/
+.ruff_cache/
+.import_linter_cache/
+.pyright/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+**/.terraform/
+**/.terragrunt-cache/
+**/.terragrunt-stack/
+*.tfstate
+*.tfstate.*

@@ -153,6 +153,13 @@ tasks:
         docker run --rm -v {{.TASKFILE_DIR}}/migrations:/migrations
         arigaio/atlas:latest migrate hash --dir file:///migrations/versions
 
+  atlas:validate:
+    desc: Verify migrations/atlas.sum integrity (fails if a migration changed without re-hashing)
+    cmds:
+      - >
+        docker run --rm -v {{.TASKFILE_DIR}}/migrations:/migrations
+        arigaio/atlas:latest migrate validate --dir file:///migrations/versions
+
   # --- Seed ---
   seed:demo:
     desc: Seed demo users (idempotent)
@@ -216,6 +223,34 @@ tasks:
     desc: "Infracost cost breakdown for ENV (needs INFRACOST_API_KEY)"
     cmds:
       - infracost breakdown --path {{.TG_DIR}}/{{.ENV}} --format table
+
+  terragrunt:migrate:
+    desc: "Build+push the migrate image and run the Fargate Atlas task (ENV=dev|prod; needs AWS creds + applied infra)"
+    cmds:
+      - cd {{.TG_DIR}}/{{.ENV}} && terragrunt stack generate
+      - |
+        set -euo pipefail
+        cd {{.TG_DIR}}/{{.ENV}}/.terragrunt-stack/migrate
+        REPO=$(terragrunt output -raw repository_url)
+        CLUSTER=$(terragrunt output -raw cluster_name)
+        TASKDEF=$(terragrunt output -raw task_definition_family)
+        SG=$(terragrunt output -raw security_group_id)
+        SUBNETS=$(terragrunt output -json subnet_ids | jq -r 'join(",")')
+        REGISTRY="${REPO%%/*}"
+        echo "→ building + pushing migrate image to $REPO:latest"
+        aws ecr get-login-password | docker login --username AWS --password-stdin "$REGISTRY"
+        docker build -f {{.TASKFILE_DIR}}/Dockerfile.migrate -t "$REPO:latest" {{.TASKFILE_DIR}}
+        docker push "$REPO:latest"
+        echo "→ running one-off Fargate migrate task"
+        TASK_ARN=$(aws ecs run-task --cluster "$CLUSTER" --task-definition "$TASKDEF" --launch-type FARGATE \
+          --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SG],assignPublicIp=DISABLED}" \
+          --query 'tasks[0].taskArn' --output text)
+        echo "  task: $TASK_ARN — waiting for it to stop…"
+        aws ecs wait tasks-stopped --cluster "$CLUSTER" --tasks "$TASK_ARN"
+        CODE=$(aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$TASK_ARN" \
+          --query 'tasks[0].containers[0].exitCode' --output text)
+        echo "  migrate exit code: $CODE"
+        test "$CODE" = "0"
 
   # --- Docs (MkDocs Material) ---
   docs:serve:

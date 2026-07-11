@@ -1,6 +1,12 @@
 # Accepted infrastructure findings — reviewed 2026-07-11.
 # Keep this list minimal and justified; remediate rather than ignore where practical.
 
+# AVD-AWS-0031 — "ECR image tags shouldn't be mutable".
+# Applies only to the `migrate` ops repo (`<name>-migrate`), whose image is a stateless Atlas+migrations
+# tool re-pushed as `:latest` on each deploy — it is not a versioned artifact needing immutable
+# provenance. The application ECR repo IS immutable (this rule doesn't fire there). Reviewed 2026-07-11.
+AVD-AWS-0031
+
 # AVD-AWS-0104 — "security group rule should not allow unrestricted egress".
 # The app/Lambda security group must reach public AWS service endpoints (Secrets Manager, ECR, CloudWatch
 # Logs, …) over HTTPS via the NAT gateway. That single 443→0.0.0.0/0 egress rule cannot be scoped to

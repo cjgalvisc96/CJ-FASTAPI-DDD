@@ -1,8 +1,10 @@
-# Password is generated in-state and never hardcoded. Exclude characters that break DB/URI parsing.
+# Password is generated in-state and never hardcoded. Only URI-unreserved specials (RFC 3986) are
+# used so the password is safe **unencoded** in a `postgres://user:pass@host` URL — both Atlas (the
+# migrate task) and the app build DSNs by string interpolation, so URL-breaking chars would corrupt them.
 resource "random_password" "db" {
   length           = var.password_length
   special          = true
-  override_special = "!#$%&*()-_=+[]{}<>:?"
+  override_special = "-_.~"
 }
 
 resource "aws_secretsmanager_secret" "db" {

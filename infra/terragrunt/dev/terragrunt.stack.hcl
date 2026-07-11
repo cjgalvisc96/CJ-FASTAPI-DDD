@@ -90,3 +90,15 @@ unit "api" {
     tags                 = local.env.default_tags
   }
 }
+
+unit "migrate" {
+  source = "${get_repo_root()}/infra/terragrunt/units/migrate"
+  path   = "migrate"
+  values = {
+    name_prefix        = local.name_prefix
+    log_retention_days = local.env.log_retention_days
+    # Image tag is injected by the CD pipeline; defaults to latest for plan.
+    image_tag = "latest"
+    tags      = local.env.default_tags
+  }
+}

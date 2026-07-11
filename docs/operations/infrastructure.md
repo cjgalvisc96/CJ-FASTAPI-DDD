@@ -82,6 +82,36 @@ flowchart LR
 `.terragrunt-stack/` is **generated** (git-ignored) — regenerate with `terragrunt stack generate`,
 never edit or commit it.
 
+## Database migrations
+
+Migrations run as a **one-off ECS Fargate task** (the `migrate` module) — the same **Atlas** flow as
+local, not on Lambda cold start (which would let concurrent cold starts race on the schema).
+
+```mermaid
+flowchart LR
+    CD[CD pipeline] -->|build + push| ECR[(ECR<br/>&lt;name&gt;-migrate image)]
+    CD -->|aws ecs run-task| T[Fargate task<br/>atlas migrate apply --env aws]
+    T -->|private subnets · app SG| A[(Aurora Serverless v2)]
+    S[Secrets Manager] -->|DB_PASSWORD| T
+```
+
+- The image (`Dockerfile.migrate`) is `arigaio/atlas` with `migrations/atlas.hcl` + `migrations/versions`
+  baked in. The task runs `migrate apply --env aws`; Atlas builds the DSN from injected
+  `DB_HOST`/`DB_PORT`/`DB_NAME`/`DB_USER` env plus `DB_PASSWORD` from **Secrets Manager**.
+- The task reuses the **app security group** (Aurora already allows ingress from it) and runs in the
+  **private subnets** — no new SG, no public IP.
+- The generated DB password is URL-safe (RFC 3986 unreserved specials only), so both Atlas and the app
+  can build a `postgres://…` DSN by string interpolation without corruption.
+
+Run it after a deploy (needs AWS credentials + applied infra):
+
+```bash
+task terragrunt:migrate ENV=dev    # build+push the migrate image, run the Fargate task, wait for exit 0
+```
+
+The CD pipeline runs this after `apply`, before the new Lambda serves traffic. It is **not** run on
+`terragrunt apply` (schema changes are a deploy step, not part of provisioning).
+
 ## Environments
 
 - **`dev` / `prod`** — real AWS. State in **S3 + DynamoDB** (bucket/table must be bootstrapped first;

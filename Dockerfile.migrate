@@ -1,0 +1,13 @@
+# Migration image for the AWS Fargate one-off migrate task: the Atlas CLI with this repo's
+# migrations baked in. The Fargate task runs `migrate apply --env aws` (see migrations/atlas.hcl),
+# with DB_HOST/DB_PORT/DB_NAME/DB_USER injected as env and DB_PASSWORD from Secrets Manager.
+#
+# Build/push is done by the CD pipeline / `task infra:migrate`. Multi-arch base; the task runs arm64.
+FROM arigaio/atlas:latest
+
+WORKDIR /migrations
+COPY migrations/atlas.hcl ./atlas.hcl
+COPY migrations/versions ./versions
+
+# Entrypoint is `atlas` (from the base image); the task supplies the command:
+#   migrate apply --env aws
