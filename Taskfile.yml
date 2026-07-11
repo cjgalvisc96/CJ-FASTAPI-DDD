@@ -104,7 +104,18 @@ tasks:
     desc: Bring up postgres + redis + keycloak + atlas(migrate) + lgtm(telemetry) + app, then tail the API logs
     cmds:
       - "{{.COMPOSE}} up -d --build"
-      - echo "API → http://localhost:18000/docs   Keycloak → http://localhost:18080   Grafana → http://localhost:13000"
+      - |
+        # Resolve the actually-published host ports (fall back to the defaults).
+        APP_P=$({{.COMPOSE}} port app 8000 2>/dev/null | cut -d: -f2)
+        KC_P=$({{.COMPOSE}} port keycloak 8080 2>/dev/null | cut -d: -f2)
+        GF_P=$({{.COMPOSE}} port lgtm 3000 2>/dev/null | cut -d: -f2)
+        echo ""
+        echo "  ── Stack ready ──────────────────────────────────────────────"
+        echo "  API:       http://localhost:${APP_P:-18000}   (/docs · /health)"
+        echo "  Keycloak:  http://localhost:${KC_P:-18080}   (admin / admin)"
+        echo "  Grafana:   http://localhost:${GF_P:-13000}   (traces · metrics · logs)"
+        echo "  ─────────────────────────────────────────────────────────────"
+        echo ""
       - "{{.COMPOSE}} logs -f app"
 
   docker:down:
