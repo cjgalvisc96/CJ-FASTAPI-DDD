@@ -101,10 +101,11 @@ tasks:
 
   # --- Docker stack ---
   docker:up:
-    desc: Bring up postgres + redis + keycloak + atlas(migrate) + app
+    desc: Bring up postgres + redis + keycloak + atlas(migrate) + app, then tail the API logs
     cmds:
       - "{{.COMPOSE}} up -d --build"
       - echo "API → http://localhost:18000/docs   Keycloak → http://localhost:18080"
+      - "{{.COMPOSE}} logs -f app"
 
   docker:down:
     desc: Tear down the stack (keep images)
