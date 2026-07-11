@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     db_port: int = 5432
     db_name: str = "ddd"
     db_user: str = "ddd"
-    db_password: str = "ddd"
+    db_password: str = "ddd"  # noqa: S105 — local-dev default, overridden by DB_PASSWORD env in real envs
     db_pool_size: int = 10
     db_pool_max_overflow: int = 20
     db_echo: bool = False

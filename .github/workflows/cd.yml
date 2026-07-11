@@ -16,6 +16,13 @@ on:
     paths:
       - "infra/**"
       - ".github/workflows/cd.yml"
+  # Also run on PRs that touch infra so the IaC Trivy scan gates infra changes before merge.
+  # (The AWS-dependent `plan` job is skipped on PRs — see its `if:` guard.)
+  pull_request:
+    branches: [main]
+    paths:
+      - "infra/**"
+      - ".github/workflows/cd.yml"
 
 permissions:
   contents: read
@@ -31,6 +38,9 @@ jobs:
   plan:
     name: Terragrunt init + plan
     runs-on: ubuntu-latest
+    # Plan needs AWS credentials + remote state, so it only runs on push/dispatch — not on PRs.
+    # PRs still get the IaC security gate via the `trivy-iac` job below.
+    if: github.event_name != 'pull_request'
     steps:
       - uses: actions/checkout@v4
 

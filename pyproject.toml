@@ -60,14 +60,17 @@ target-version = "py314"
 src = ["src", "tests"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "UP", "B", "C4", "SIM", "RUF"]
+# "S" = flake8-bandit (Python source security / SAST-lite: hardcoded secrets, shell=True, weak
+# crypto, SQL built from strings, etc.). Complements Trivy, which covers deps/secrets/IaC but not code.
+select = ["E", "F", "I", "N", "UP", "B", "C4", "SIM", "RUF", "S"]
 ignore = ["B008"]  # FastAPI Depends() in defaults is idiomatic
 
 [tool.ruff.lint.isort]
 known-first-party = ["ddd_app"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101"]
+# Tests: assert is expected (S101); dummy passwords in fixtures are not real secrets (S105/S106).
+"tests/**" = ["S101", "S105", "S106"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
