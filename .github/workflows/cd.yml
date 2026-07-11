@@ -31,7 +31,7 @@ permissions:
 
 env:
   TF_VERSION: "1.9.5"
-  TG_VERSION: "0.67.4"
+  TG_VERSION: "1.0.7"   # >= the version that introduced `terragrunt stack` (Stacks)
   ENVIRONMENT: ${{ github.event.inputs.environment || 'dev' }}
 
 jobs:
@@ -42,7 +42,7 @@ jobs:
     # PRs still get the IaC security gate via the `trivy-iac` job below.
     if: github.event_name != 'pull_request'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -57,9 +57,7 @@ jobs:
           terragrunt --version
 
       - name: Setup Task
-        uses: arduino/setup-task@v2
-        with:
-          version: 3.x
+        run: sh -c "$(curl -sSL https://taskfile.dev/install.sh)" -- -b /usr/local/bin v3.40.1
 
       # Requires an AWS OIDC deploy role ARN in repo variables. Plan needs read access to state + AWS.
       - name: Configure AWS credentials
@@ -79,11 +77,9 @@ jobs:
     name: Trivy IaC misconfig scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Setup Task
-        uses: arduino/setup-task@v2
-        with:
-          version: 3.x
+        run: sh -c "$(curl -sSL https://taskfile.dev/install.sh)" -- -b /usr/local/bin v3.40.1
       - name: Install Trivy
         run: |
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
@@ -100,7 +96,7 @@ jobs:
     if: false
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Infracost
         uses: infracost/actions/setup@v3
@@ -108,9 +104,7 @@ jobs:
           api-key: ${{ secrets.INFRACOST_API_KEY }}
 
       - name: Setup Task
-        uses: arduino/setup-task@v2
-        with:
-          version: 3.x
+        run: sh -c "$(curl -sSL https://taskfile.dev/install.sh)" -- -b /usr/local/bin v3.40.1
 
       - name: Infracost breakdown
         env:
@@ -126,6 +120,6 @@ jobs:
     #   task terragrunt:apply ENV=${ENVIRONMENT}
     if: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Placeholder (apply is disabled)
         run: echo "Deploy step is intentionally disabled — plan + scan only. Use 'task terragrunt:apply ENV=${ENVIRONMENT}'."
