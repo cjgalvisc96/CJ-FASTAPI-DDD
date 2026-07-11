@@ -27,6 +27,9 @@ services:
     image: redis:7
     ports:
       - "${REDIS_HOST_PORT:-16379}:6379"
+    volumes:
+      # Named volume for the image's VOLUME /data, otherwise Docker creates an anonymous (hash) one.
+      - redisdata:/data
     networks:
       - ddd-net
     healthcheck:
@@ -135,4 +138,5 @@ networks:
 
 volumes:
   pgdata:
+  redisdata:
   flocidata:
