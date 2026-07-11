@@ -56,7 +56,7 @@ tasks:
       # App-focused: skip infra/ — Terraform misconfig is gated separately by `task terragrunt:trivy`.
       - >
         trivy fs . --scanners vuln,secret,misconfig --severity HIGH,CRITICAL
-        --ignore-unfixed --skip-dirs infra --exit-code 1
+        --ignore-unfixed --skip-dirs infra --exit-code 1 --quiet --skip-version-check
 
   fix:linter:
     desc: Ruff autofix + format
@@ -201,7 +201,9 @@ tasks:
   terragrunt:trivy:
     desc: Trivy IaC misconfig scan of the Terraform (HIGH/CRITICAL, honors infra/.trivyignore)
     cmds:
-      - trivy config infra/terraform --severity HIGH,CRITICAL --ignorefile infra/.trivyignore --exit-code 1
+      - >
+        trivy config infra/terraform --severity HIGH,CRITICAL --ignorefile infra/.trivyignore
+        --exit-code 1 --quiet --skip-version-check
 
   terragrunt:infracost:
     desc: "Infracost cost breakdown for ENV (needs INFRACOST_API_KEY)"

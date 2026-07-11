@@ -74,8 +74,11 @@ jobs:
         uses: arduino/setup-task@v2
         with:
           version: 3.x
-      - name: Setup Trivy
-        uses: aquasecurity/setup-trivy@0.3.1
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+            | sh -s -- -b /usr/local/bin v0.71.2
+          trivy --version
       - name: Trivy IaC scan
         run: task terragrunt:trivy
 
