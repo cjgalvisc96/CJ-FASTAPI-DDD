@@ -12,13 +12,8 @@ resource "aws_security_group" "cache" {
     security_groups = [var.app_security_group_id]
   }
 
-  egress {
-    description = "Allow all outbound"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  # No egress rules: security groups are stateful, so replies to inbound connections are allowed.
+  # The cache never initiates outbound traffic, so it needs no egress allowance.
 
   tags = merge(var.tags, {
     Name = "${var.name_prefix}-cache-sg"

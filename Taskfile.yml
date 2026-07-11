@@ -51,11 +51,12 @@ tasks:
       - "{{.PY}} vulture"
 
   check:trivy:
-    desc: Trivy vulnerability + secret + misconfig scan (HIGH/CRITICAL)
+    desc: "Trivy scan of the app (deps + secrets + config; IaC is covered by terragrunt:trivy)"
     cmds:
+      # App-focused: skip infra/ — Terraform misconfig is gated separately by `task terragrunt:trivy`.
       - >
-        docker run --rm -v {{.TASKFILE_DIR}}:/repo -w /repo aquasec/trivy:latest fs .
-        --scanners vuln,secret,misconfig --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1
+        trivy fs . --scanners vuln,secret,misconfig --severity HIGH,CRITICAL
+        --ignore-unfixed --skip-dirs infra --exit-code 1
 
   fix:linter:
     desc: Ruff autofix + format
@@ -163,8 +164,9 @@ tasks:
     cmds:
       - "{{.COMPOSE}} --profile infra stop floci"
 
-  # --- Infra (Terragrunt, per ENV) ---
-  # Usage: task terragrunt:plan ENV=dev   |   task terragrunt:apply ENV=prod
+  # --- Infra (Terragrunt Stacks, per ENV) ---
+  # Usage: task terragrunt:plan ENV=dev  |  task terragrunt:apply ENV=prod  |  ...ENV=local (floci)
+  # Each env is a Terragrunt Stack: `stack generate` materializes the units, then `stack run <cmd>`.
   terragrunt:fmt:
     desc: Format the Terraform/Terragrunt HCL
     cmds:
@@ -172,36 +174,34 @@ tasks:
       - cd {{.TG_DIR}} && terragrunt hcl fmt
 
   terragrunt:validate:
-    desc: Validate the Terragrunt stack for ENV
+    desc: "Validate the Terragrunt stack for ENV (dev|prod|local)"
     cmds:
-      - cd {{.TG_DIR}}/{{.ENV}} && terragrunt run-all validate --terragrunt-non-interactive
+      - cd {{.TG_DIR}}/{{.ENV}} && terragrunt stack generate && terragrunt hcl validate
 
   terragrunt:init:
-    desc: "terragrunt run-all init (ENV=dev|prod)"
+    desc: "Generate the stack + init (ENV=dev|prod|local)"
     cmds:
-      - cd {{.TG_DIR}}/{{.ENV}} && terragrunt run-all init --terragrunt-non-interactive
+      - cd {{.TG_DIR}}/{{.ENV}} && terragrunt stack generate && terragrunt stack run init --terragrunt-non-interactive
 
   terragrunt:plan:
-    desc: "terragrunt run-all plan (ENV=dev|prod)"
+    desc: "Generate the stack + plan (ENV=dev|prod|local)"
     cmds:
-      - cd {{.TG_DIR}}/{{.ENV}} && terragrunt run-all plan --terragrunt-non-interactive
+      - cd {{.TG_DIR}}/{{.ENV}} && terragrunt stack generate && terragrunt stack run plan --terragrunt-non-interactive
 
   terragrunt:apply:
-    desc: "terragrunt run-all apply (ENV=dev|prod)"
+    desc: "Generate the stack + apply (ENV=dev|prod|local)"
     cmds:
-      - cd {{.TG_DIR}}/{{.ENV}} && terragrunt run-all apply --terragrunt-non-interactive
+      - cd {{.TG_DIR}}/{{.ENV}} && terragrunt stack generate && terragrunt stack run apply --terragrunt-non-interactive
 
   terragrunt:destroy:
-    desc: "terragrunt run-all destroy (ENV=dev|prod|local)"
+    desc: "Generate the stack + destroy (ENV=dev|prod|local)"
     cmds:
-      - cd {{.TG_DIR}}/{{.ENV}} && terragrunt run-all destroy --terragrunt-non-interactive
+      - cd {{.TG_DIR}}/{{.ENV}} && terragrunt stack generate && terragrunt stack run destroy --terragrunt-non-interactive
 
   terragrunt:trivy:
-    desc: Trivy IaC misconfig scan of the Terraform/Terragrunt (HIGH/CRITICAL)
+    desc: Trivy IaC misconfig scan of the Terraform (HIGH/CRITICAL, honors infra/.trivyignore)
     cmds:
-      - >
-        docker run --rm -v {{.TASKFILE_DIR}}/infra:/infra aquasec/trivy:latest config /infra
-        --severity HIGH,CRITICAL --exit-code 1
+      - trivy config infra/terraform --severity HIGH,CRITICAL --ignorefile infra/.trivyignore --exit-code 1
 
   terragrunt:infracost:
     desc: "Infracost cost breakdown for ENV (needs INFRACOST_API_KEY)"

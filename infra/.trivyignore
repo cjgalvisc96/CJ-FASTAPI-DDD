@@ -1,0 +1,9 @@
+# Accepted infrastructure findings — reviewed 2026-07-11.
+# Keep this list minimal and justified; remediate rather than ignore where practical.
+
+# AVD-AWS-0104 — "security group rule should not allow unrestricted egress".
+# The app/Lambda security group must reach public AWS service endpoints (Secrets Manager, ECR, CloudWatch
+# Logs, …) over HTTPS via the NAT gateway. That single 443→0.0.0.0/0 egress rule cannot be scoped to
+# fixed CIDRs without provisioning a full set of VPC interface endpoints for every service (added cost).
+# Data-store SGs (Aurora, ElastiCache) carry NO egress at all. Revisit if VPC endpoints are introduced.
+AVD-AWS-0104

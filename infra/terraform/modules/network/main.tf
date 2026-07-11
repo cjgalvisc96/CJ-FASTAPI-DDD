@@ -33,10 +33,12 @@ resource "aws_internet_gateway" "this" {
 resource "aws_subnet" "public" {
   count = var.az_count
 
-  vpc_id                  = aws_vpc.this.id
-  cidr_block              = cidrsubnet(var.vpc_cidr, 8, count.index)
-  availability_zone       = local.azs[count.index]
-  map_public_ip_on_launch = true
+  vpc_id            = aws_vpc.this.id
+  cidr_block        = cidrsubnet(var.vpc_cidr, 8, count.index)
+  availability_zone = local.azs[count.index]
+  # No auto-assigned public IPs: the only things in public subnets are the NAT gateway (which uses an
+  # allocated EIP) and the IGW route — workloads (Lambda) live in private subnets.
+  map_public_ip_on_launch = false
 
   tags = merge(var.tags, {
     Name = "${var.name_prefix}-public-${local.azs[count.index]}"
@@ -159,13 +161,23 @@ resource "aws_security_group" "app" {
   description = "Application/Lambda security group (egress-only source for data stores)."
   vpc_id      = aws_vpc.this.id
 
-  # Outbound only; the app initiates connections to Aurora, ElastiCache, Secrets Manager, etc.
+  # Scoped egress (least privilege): HTTPS to AWS service APIs (Secrets Manager, ECR, logs, …) via the
+  # NAT gateway, plus Postgres/Redis inside the VPC. The 443→0.0.0.0/0 rule is unavoidable for public
+  # AWS endpoints without a full set of VPC interface endpoints (see infra/.trivyignore, AVD-AWS-0104).
   egress {
-    description = "Allow all outbound"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    description = "HTTPS to AWS service APIs"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    description = "PostgreSQL and Redis within the VPC"
+    from_port   = 5432
+    to_port     = 6379
+    protocol    = "tcp"
+    cidr_blocks = [aws_vpc.this.cidr_block]
   }
 
   tags = merge(var.tags, {

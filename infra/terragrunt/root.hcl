@@ -117,28 +117,12 @@ remote_state {
 
 # AWS provider with default_tags — every resource inherits the mandatory FinOps tags even if a
 # module forgets to merge them. Keep provider blocks OUT of modules.
+#
+# NOTE: we do NOT generate a versions.tf here. Each module already ships its own versions.tf with the
+# required_version + required_providers it uses; generating another would produce a duplicate
+# required_providers block at `terraform init`.
 generate "provider" {
   path      = "provider.tf"
   if_exists = "overwrite_terragrunt"
   contents  = local.use_floci ? local.provider_floci : local.provider_aws
-}
-
-generate "versions" {
-  path      = "versions_generated.tf"
-  if_exists = "overwrite_terragrunt"
-  contents  = <<-EOF
-    terraform {
-      required_version = ">= 1.6"
-      required_providers {
-        aws = {
-          source  = "hashicorp/aws"
-          version = "~> 5.60"
-        }
-        random = {
-          source  = "hashicorp/random"
-          version = "~> 3.6"
-        }
-      }
-    }
-  EOF
 }

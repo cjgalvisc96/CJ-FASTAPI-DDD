@@ -21,13 +21,8 @@ resource "aws_security_group" "db" {
     security_groups = [var.app_security_group_id]
   }
 
-  egress {
-    description = "Allow all outbound"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  # No egress rules: security groups are stateful, so the database's replies to inbound connections
+  # are always allowed. Aurora never initiates outbound traffic, so it needs no egress allowance.
 
   tags = merge(var.tags, {
     Name = "${var.name_prefix}-aurora-sg"
@@ -36,6 +31,23 @@ resource "aws_security_group" "db" {
   lifecycle {
     create_before_destroy = true
   }
+}
+
+# Customer-managed KMS key for Aurora storage encryption (with rotation) — preferred over the
+# default AWS-managed key so key policy and rotation are under our control.
+resource "aws_kms_key" "aurora" {
+  description             = "${var.name_prefix} Aurora storage encryption"
+  enable_key_rotation     = true
+  deletion_window_in_days = 7
+
+  tags = merge(var.tags, {
+    Name = "${var.name_prefix}-aurora-kms"
+  })
+}
+
+resource "aws_kms_alias" "aurora" {
+  name          = "alias/${var.name_prefix}-aurora"
+  target_key_id = aws_kms_key.aurora.key_id
 }
 
 # Aurora Serverless v2: engine_mode "provisioned" + serverlessv2_scaling_configuration.
@@ -54,6 +66,7 @@ resource "aws_rds_cluster" "this" {
   vpc_security_group_ids = [aws_security_group.db.id]
 
   storage_encrypted         = true
+  kms_key_id                = aws_kms_key.aurora.arn
   deletion_protection       = var.deletion_protection
   skip_final_snapshot       = var.skip_final_snapshot
   final_snapshot_identifier = var.skip_final_snapshot ? null : "${var.name_prefix}-aurora-final"
