@@ -48,8 +48,9 @@ dependency-injector · Atlas (migrations) · pytest · ruff · pyright · import
 
 - **Middleware**: Redis fixed-window **rate limiting** (fail-open, exempts health/docs) and a
   **request body-size cap** (413). Configurable via `RATE_LIMIT_*` / `MAX_REQUEST_BODY_BYTES`.
-- **Quality gate**: `task check:all` runs ruff, pyright, import-linter, vulture, and pytest
-  (parallel + random, coverage ≥ 97%). Also `task check:trivy` for a local vulnerability scan.
+- **Quality gate**: `task check:all` runs ruff, pyright, import-linter, vulture, and bandit;
+  `task test:coverage` runs the parallel/random test suite (coverage ≥ 97%); `task trivy` scans the
+  app for dependency CVEs, secrets, and Dockerfile misconfig.
 - **Docs**: a full MkDocs Material site under `docs/` — `task docs:serve` → http://127.0.0.1:8001.
 
 ## Quick start
@@ -86,5 +87,7 @@ only file that sees two contexts at once is the composition root.
 ## Quality gate
 
 ```bash
-task check:all   # ruff + pyright + import-linter + vulture + tests
+task check:all        # ruff + pyright + import-linter + vulture + bandit
+task test:coverage    # parallel + random tests, coverage >= 97%
+task trivy            # dependency CVEs + secrets + Dockerfile misconfig
 ```

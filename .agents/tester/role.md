@@ -14,7 +14,7 @@ and the suite fast, parallel, and order-independent.
 - Ensure every tier covers happy paths, edge cases, and error scenarios.
 - Keep the suite runnable in **parallel** (`pytest-xdist`) and **random order** (`pytest-randomly`) —
   tests must be independent and order-agnostic.
-- Enforce the coverage gate (**≥ 97%**) via `task test:all` / `task test:cov`.
+- Enforce the coverage gate (**≥ 97%**) via `task test:all` / `task test:coverage`.
 - Test the Keycloak verifier with a generated RSA key + faked JWKS (no live Keycloak).
 
 ## Inputs

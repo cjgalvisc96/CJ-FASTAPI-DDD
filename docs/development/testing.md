@@ -24,7 +24,7 @@ flowchart TD
 
 ```bash
 task test:all      # pytest (parallel, random, coverage)
-task test:cov      # + term-missing report
+task test:coverage      # + term-missing report
 task check:architecture   # just the import-linter contracts
 ```
 
@@ -46,4 +46,5 @@ task check:architecture   # just the import-linter contracts
   token, and fakes the JWKS endpoint so `KeycloakAuthenticator` verifies against the test key. See
   [Auth & RBAC](../architecture/auth-rbac.md).
 
-All of the above is part of the `task check:all` gate described in [Governance](governance.md).
+Tests run via `task test:coverage` (the CI `test` job); the quality gates run via `task check:all`.
+See [Governance](governance.md).

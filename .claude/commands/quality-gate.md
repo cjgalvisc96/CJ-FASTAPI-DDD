@@ -5,21 +5,25 @@ Run the full pre-merge gate. This mirrors CI and must pass before any change is 
 ## Run
 
 ```bash
-task check:all
+task check:all        # quality gates
+task test:coverage    # tests + coverage gate
+task trivy            # dependency CVEs + secrets + Dockerfile misconfig
 ```
 
-Which runs, in order: `check:linter` → `check:types` → `check:architecture` → `check:deadcode` →
-`test:all`.
+`check:all` runs, in order: `check:linter` → `check:types` → `check:architecture` → `check:deadcode`
+→ `bandit`. These mirror the CI `quality`, `test`, and `trivy` jobs respectively.
 
 ## What each step checks
 
 | Step | Checks |
 |------|--------|
-| `check:linter` | ruff lint + `ruff format --check` (line length 100) |
+| `check:linter` | ruff lint (incl. `S`/bandit rules) + `ruff format --check` (line length 100) |
 | `check:types` | pyright (standard mode, Python 3.14) — no new type errors |
 | `check:architecture` | `import-linter` contracts: layering per context, domain framework-free, presentation ↛ infrastructure |
 | `check:deadcode` | vulture — no unreferenced code |
-| `test:all` | full `pytest` run, parallel + random, **coverage gate ≥ 97%** |
+| `bandit` | Python SAST — no security findings in `src/` |
+| `test:coverage` | full `pytest` run, parallel + random, **coverage gate ≥ 97%** |
+| `trivy` | dependency CVEs, secrets, and Dockerfile misconfig |
 
 ## Pass criteria
 

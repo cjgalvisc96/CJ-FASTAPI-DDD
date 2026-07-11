@@ -14,11 +14,13 @@ task check:all
 | **Pyright** | `check:types` | Static types in `standard` mode (Python 3.14). |
 | **import-linter** | `check:architecture` | The four [layering & isolation contracts](../architecture/layering.md). |
 | **Vulture** | `check:deadcode` | Dead-code scan (`min_confidence = 70`). |
-| **pytest** | `test:all` | Full suite, parallel + random, with the **≥ 97% coverage gate**. |
+| **bandit** | `bandit` | Python SAST over `src/` (part of `check:all`). |
+| **pytest** | `test:coverage` | Full suite, parallel + random, with the **≥ 97% coverage gate**. |
 
-`check:all` chains all five (`check:linter → check:types → check:architecture → check:deadcode →
-test:all`), so a single failing check fails the build. The same gate runs in
-[CI](../operations/ci.md).
+`check:all` chains the quality gates (`check:linter → check:types → check:architecture →
+check:deadcode → bandit`); tests run separately via `task test:coverage` and the app scan via
+`task trivy`. These map to the CI `quality`, `test`, and `trivy` jobs — a single failing check fails
+the build. See [CI](../operations/ci.md).
 
 ```mermaid
 flowchart LR

@@ -1,39 +1,12 @@
 name: cj-fastapi-ddd
 
-# Dedicated project network so every service resolves the others by name and nothing leaks onto the
-# host default bridge. `task docker:prune` removes it for a from-scratch rebuild.
-networks:
-  ddd-net:
-    name: ddd-net
-    driver: bridge
-
 services:
-  # Local AWS emulator — lets `task terragrunt:* ENV=local` provision the full serverless stack
-  # (Aurora, ElastiCache, Lambda, API Gateway, Cognito, ECR, Secrets Manager, …) against floci
-  # instead of real AWS. All services are served at http://localhost:4566.
-  floci:
-    image: floci/floci:latest
-    container_name: ddd-floci
-    # Opt-in only (it spawns backing containers via docker.sock): `docker compose --profile infra up`
-    # or `task floci:up`. Not part of the default app stack.
-    profiles: ["infra"]
-    environment:
-      FLOCI_HOSTNAME: floci   # so URLs resolve between containers
-    ports:
-      - "4566:4566"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock   # floci spawns backing containers
-      - flocidata:/var/lib/floci
-    networks:
-      - ddd-net
-
   postgres:
     image: postgres:16
-    container_name: ddd-postgres
     environment:
-      POSTGRES_USER: ddd
-      POSTGRES_PASSWORD: ddd
-      POSTGRES_DB: ddd
+      POSTGRES_DB: ${DB_NAME:-ddd}
+      POSTGRES_USER: ${DB_USER:-ddd}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-ddd}
     ports:
       - "5432:5432"
     volumes:
@@ -41,53 +14,58 @@ services:
     networks:
       - ddd-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ddd -d ddd"]
-      interval: 3s
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-ddd}"]
+      interval: 5s
       timeout: 3s
-      retries: 20
+      retries: 10
 
   redis:
     image: redis:7
-    container_name: ddd-redis
     ports:
       - "6379:6379"
     networks:
       - ddd-net
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 3s
+      interval: 5s
       timeout: 3s
-      retries: 20
+      retries: 10
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.0
-    container_name: ddd-keycloak
     command: ["start-dev", "--import-realm"]
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
-      KC_HEALTH_ENABLED: "true"
+      KC_HTTP_PORT: 8080
     ports:
       - "8080:8080"
-    networks:
-      - ddd-net
     volumes:
       - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    networks:
+      - ddd-net
+    healthcheck:
+      test:
+        ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo ok >&3 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
 
+  # One-shot Atlas migration; the app waits for it to complete before starting.
   atlas:
     image: arigaio/atlas:latest
-    container_name: ddd-atlas
-    depends_on:
-      postgres:
-        condition: service_healthy
     command: >
       migrate apply
       --url "postgres://ddd:ddd@postgres:5432/ddd?sslmode=disable"
       --dir "file:///migrations/versions"
-    networks:
-      - ddd-net
     volumes:
       - ../migrations:/migrations:ro
+    networks:
+      - ddd-net
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: "no"
 
   app:
@@ -96,9 +74,9 @@ services:
       dockerfile: Dockerfile
       target: dev
     image: local/cj-fastapi-ddd:dev
-    container_name: ddd-api
-    # Base settings come from the project .env; the values below only override the host names so the
-    # app reaches the sibling containers by service name instead of localhost.
+    command: sh -c "ddd-seed && ddd-api"
+    # All app config comes from .env; the values below only override the service hostnames so the app
+    # reaches the sibling containers by name. (For host-based runs, .env already points at localhost.)
     env_file:
       - ../.env
     environment:
@@ -107,10 +85,10 @@ services:
       KEYCLOAK_URL: http://keycloak:8080
     ports:
       - "8000:8000"
-    networks:
-      - ddd-net
     volumes:
       - ../src:/app/src:ro
+    networks:
+      - ddd-net
     depends_on:
       postgres:
         condition: service_healthy
@@ -118,6 +96,33 @@ services:
         condition: service_healthy
       atlas:
         condition: service_completed_successfully
+
+  # Local AWS emulator for exercising the Terraform/Terragrunt stack offline.
+  # Start on demand (docker compose --profile infra up -d floci, or task floci:up); target it with
+  # task terragrunt:plan ENV=local.
+  floci:
+    image: floci/floci:latest
+    profiles: ["infra"]
+    environment:
+      FLOCI_HOSTNAME: floci
+    ports:
+      - "4566:4566"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock   # floci spawns backing containers
+      - flocidata:/var/lib/floci
+    networks:
+      - ddd-net
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/4566 && echo ok >&3 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+
+networks:
+  ddd-net:
+    name: ddd-net
+    driver: bridge
 
 volumes:
   pgdata:

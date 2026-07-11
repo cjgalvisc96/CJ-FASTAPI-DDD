@@ -50,13 +50,13 @@ tasks:
     cmds:
       - "{{.PY}} vulture"
 
-  check:bandit:
-    desc: Bandit SAST scan of the Python source
+  bandit:
+    desc: Python source security analysis (SAST)
     cmds:
       - "{{.PY}} bandit -c pyproject.toml -q -r src"
 
-  check:trivy:
-    desc: "Trivy scan of the app (deps + secrets + config; IaC is covered by terragrunt:trivy)"
+  trivy:
+    desc: Scan the app for dependency CVEs, secrets, and Dockerfile misconfig (Trivy)
     cmds:
       # App-focused: skip infra/ — Terraform misconfig is gated separately by `task terragrunt:trivy`.
       - >
@@ -70,17 +70,16 @@ tasks:
       - "{{.PY}} ruff format src tests"
 
   check:all:
-    desc: Full quality gate
+    desc: Run every quality gate (lint, types, architecture, dead code, SAST)
     cmds:
       - task: check:linter
       - task: check:types
       - task: check:architecture
       - task: check:deadcode
-      - task: check:bandit
-      - task: test:all
+      - task: bandit
 
-  clean:cache:
-    desc: Remove all tool caches (pytest, ruff, import-linter, pyright, coverage, __pycache__)
+  remove:cache:
+    desc: Remove all tool caches and generated artifacts
     cmds:
       - >
         rm -rf .pytest_cache .ruff_cache .import_linter_cache .pyright .mypy_cache
@@ -94,8 +93,8 @@ tasks:
     cmds:
       - "{{.PY}} pytest {{.CLI_ARGS}}"
 
-  test:cov:
-    desc: Run tests with coverage
+  test:coverage:
+    desc: Run tests with coverage report (gate >= 97%)
     cmds:
       - "{{.PY}} pytest --cov --cov-report=term-missing {{.CLI_ARGS}}"
 

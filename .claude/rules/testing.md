@@ -1,6 +1,6 @@
 # Rule: Testing
 
-Enforced via `task test:all` / `task test:cov` and the coverage gate. See
+Enforced via `task test:all` / `task test:coverage` and the coverage gate. See
 `docs/development/testing.md` for the full strategy.
 
 ## Coverage gate

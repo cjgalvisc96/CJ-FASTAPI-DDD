@@ -65,9 +65,9 @@ Two console scripts are defined in `pyproject.toml`:
 | `check:types` | Pyright |
 | `check:architecture` | `import-linter` contracts |
 | `check:deadcode` | Vulture |
-| `check:all` | Full quality gate (lint, types, architecture, deadcode, tests) |
-| `clean:cache` | Remove tool caches |
-| `test:all` / `test:cov` | Run tests / with coverage |
+| `check:all` | Quality gate (lint, types, architecture, deadcode, bandit) |
+| `remove:cache` | Remove tool caches |
+| `test:all` / `test:coverage` | Run tests / with coverage |
 | `docker:up` / `down` / `prune` / `logs` / `smoke` | Manage the stack |
 | `atlas:migrate` / `status` / `hash` | Atlas migrations |
 | `seed:demo` | Seed demo users |
@@ -79,7 +79,9 @@ Two console scripts are defined in `pyproject.toml`:
 Before pushing, run the full gate:
 
 ```bash
-task check:all
+task check:all        # lint, types, architecture, dead code, bandit
+task test:coverage    # tests + coverage gate (>= 97%)
+task trivy            # dependency CVEs + secrets + Dockerfile misconfig
 ```
 
 See [Testing](testing.md) and [Governance](governance.md) for what that gate enforces.
