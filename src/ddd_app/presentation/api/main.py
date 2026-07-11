@@ -21,7 +21,8 @@ def main() -> None:
     reload = os.environ.get("API_RELOAD", "").lower() in {"1", "true", "yes", "on"}
     uvicorn.run(
         "ddd_app.presentation.api.main:app",
-        host="0.0.0.0",  # noqa: S104 — container/Lambda must bind all interfaces to be reachable
+        # Bind all interfaces: required to be reachable inside a container / Lambda.
+        host="0.0.0.0",  # noqa: S104  # nosec B104
         port=int(os.environ.get("API_PORT", "8000")),
         reload=reload,
         reload_dirs=["src"] if reload else None,

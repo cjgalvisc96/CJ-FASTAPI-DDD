@@ -50,6 +50,11 @@ tasks:
     cmds:
       - "{{.PY}} vulture"
 
+  check:bandit:
+    desc: Bandit SAST scan of the Python source
+    cmds:
+      - "{{.PY}} bandit -c pyproject.toml -q -r src"
+
   check:trivy:
     desc: "Trivy scan of the app (deps + secrets + config; IaC is covered by terragrunt:trivy)"
     cmds:
@@ -71,6 +76,7 @@ tasks:
       - task: check:types
       - task: check:architecture
       - task: check:deadcode
+      - task: check:bandit
       - task: test:all
 
   clean:cache:

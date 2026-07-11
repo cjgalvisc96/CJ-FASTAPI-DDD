@@ -28,6 +28,7 @@ dev = [
     "pyright>=1.1.370",
     "import-linter>=2.0",
     "vulture>=2.11",
+    "bandit[toml]>=1.7",
 ]
 test = [
     "pytest>=8.2",
@@ -102,6 +103,11 @@ reportMissingImports = true
 [tool.vulture]
 paths = ["src"]
 min_confidence = 70
+
+[tool.bandit]
+# SAST for the application source. Tests are excluded (asserts/dummy passwords are expected there).
+# Intentional findings are annotated inline with `# nosec <ID>`.
+exclude_dirs = ["tests", ".venv"]
 
 [tool.importlinter]
 root_packages = ["ddd_app"]
