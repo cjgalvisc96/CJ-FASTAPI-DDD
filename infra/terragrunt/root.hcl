@@ -17,9 +17,10 @@ locals {
   env    = read_terragrunt_config(find_in_parent_folders("env.hcl"))
   region = local.env.locals.region
 
-  # floci (local AWS emulator) mode — set in local/env.hcl.
+  # floci (local AWS emulator) mode — set in local/env.hcl. Host port is offset to 4567 so this
+  # stack's floci coexists with sibling projects (override with AWS_ENDPOINT_URL if needed).
   use_floci      = try(local.env.locals.use_floci, false)
-  floci_endpoint = get_env("AWS_ENDPOINT_URL", "http://localhost:4566")
+  floci_endpoint = get_env("AWS_ENDPOINT_URL", "http://localhost:4567")
 
   # State backend names (real envs). Override via env vars if your bucket/table differ.
   state_bucket = get_env("TG_STATE_BUCKET", "cj-fastapi-ddd-tfstate")
