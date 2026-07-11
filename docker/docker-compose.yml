@@ -7,6 +7,7 @@ name: cj-fastapi-ddd
 services:
   postgres:
     image: postgres:16
+    container_name: cj-fastapi-ddd-postgres
     environment:
       POSTGRES_DB: ${DB_NAME:-ddd}
       POSTGRES_USER: ${DB_USER:-ddd}
@@ -25,6 +26,7 @@ services:
 
   redis:
     image: redis:7
+    container_name: cj-fastapi-ddd-redis
     ports:
       - "${REDIS_HOST_PORT:-16379}:6379"
     volumes:
@@ -40,6 +42,7 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.0
+    container_name: cj-fastapi-ddd-keycloak
     command: ["start-dev", "--import-realm"]
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
@@ -62,6 +65,7 @@ services:
   # One-shot Atlas migration; the app waits for it to complete before starting.
   atlas:
     image: arigaio/atlas:latest
+    container_name: cj-fastapi-ddd-atlas
     command: >
       migrate apply
       --url "postgres://ddd:ddd@postgres:5432/ddd?sslmode=disable"
@@ -81,6 +85,7 @@ services:
       dockerfile: Dockerfile
       target: dev
     image: local/cj-fastapi-ddd:dev
+    container_name: cj-fastapi-ddd-app
     command: sh -c "ddd-seed && ddd-api"
     # All app config comes from .env; the values below only override the service hostnames so the app
     # reaches the sibling containers by name. (For host-based runs, .env already points at localhost.)
@@ -114,6 +119,7 @@ services:
   # task terragrunt:plan ENV=local.
   floci:
     image: floci/floci:latest
+    container_name: cj-fastapi-ddd-floci
     profiles: ["infra"]
     environment:
       FLOCI_HOSTNAME: floci
