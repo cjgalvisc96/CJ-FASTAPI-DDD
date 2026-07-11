@@ -75,18 +75,45 @@ keys even if a module misses one:
 > Align these keys/values to your organization's tagging policy before applying.
 Tags are defined once per environment in `terragrunt/<env>/env.hcl` (`default_tags`).
 
-## Terragrunt layout
+## Terragrunt layout (modern Stacks — DRY)
+
+The wiring for each component is defined **once** as a reusable **unit template**, and each
+environment is a single `terragrunt.stack.hcl` that instantiates the 7 units with that env's
+values. There are no more hand-copied per-env/per-component `terragrunt.hcl` files.
 
 ```
 terragrunt/
-  root.hcl                 # remote_state (S3 + DynamoDB lock) + generated provider/versions
-  _envcommon/              # shared inputs per component (reference ../../terraform/modules/<x>)
-  dev/  env.hcl + <component>/terragrunt.hcl
-  prod/ env.hcl + <component>/terragrunt.hcl
+  root.hcl                     # remote_state (S3+DynamoDB or local/floci) + generated
+                               # provider/versions + errors{retry} for transient throttling.
+                               # Included by every unit; single place for provider/backend.
+  units/                       # reusable UNIT TEMPLATES — component wiring defined ONCE
+    <component>/terragrunt.hcl #   include "root" + terraform{source} + dependency{mock_outputs}
+                               #   + inputs; env-specific knobs arrive via `values.*`
+  dev/   env.hcl + terragrunt.stack.hcl     # per-env knobs + 7 unit{} instances
+  prod/  env.hcl + terragrunt.stack.hcl
+  local/ env.hcl + terragrunt.stack.hcl     # env.hcl sets use_floci = true
 ```
 
+Where things live (DRY contract):
+
+| Concern | Defined once in |
+|---------|-----------------|
+| Provider / backend / versions generation, retry-on-throttle | `root.hcl` |
+| A component's module source, dependency graph, mock_outputs, input plumbing | `units/<component>/terragrunt.hcl` |
+| Per-env sizing / tags / `use_floci` (single source of truth) | `<env>/env.hcl` |
+| Which units run in an env + the env→unit value mapping | `<env>/terragrunt.stack.hcl` |
+
+The three `terragrunt.stack.hcl` files are structurally identical — each simply auto-loads
+its own directory's `env.hcl`. No logic is copy-pasted between environments: change a knob in
+`env.hcl`, change wiring in `units/`.
+
+The `values` block on each `unit` feeds the template (generated as `terragrunt.values.hcl`
+next to each unit), so the unit template reads `values.name_prefix`, `values.tags`, etc.
+Constants (VPC CIDR, memory size, engine, etc.) stay hard-coded in the unit template.
+
 Dependency graph (via Terragrunt `dependency` blocks, all with `mock_outputs` so `plan`
-works before anything is applied):
+works before anything is applied). After `stack generate`, units are materialized as sibling
+directories under `.terragrunt-stack/`, so `config_path = "../<unit>"` resolves the graph:
 
 ```
 network ─┬─▶ aurora ─┐
@@ -95,6 +122,9 @@ secrets ─┴───────────┼─▶ api
 ecr ─────────────────┤
 cognito ─────────────┘
 ```
+
+> `.terragrunt-stack/` is **generated** (git-ignored) — never edit or commit it. Regenerate
+> with `terragrunt stack generate`; wipe with `terragrunt stack clean`.
 
 ## Bootstrap (do this once, first)
 
@@ -123,24 +153,44 @@ aws dynamodb create-table --table-name "$TG_LOCK_TABLE" \
 `root.hcl` reads `TG_STATE_BUCKET` / `TG_LOCK_TABLE` from the environment (with defaults),
 so override them to match what you created.
 
-## Running
+## Running (Terragrunt Stacks)
+
+Each environment is a stack. From the env directory, **generate** the units, then run a
+command across the whole stack (the dependency graph is respected; `mock_outputs` let `plan`
+run before any apply):
 
 ```bash
-# Plan the whole dev environment (respects the dependency graph; mock_outputs let it run
-# before any apply):
 cd terragrunt/dev
-terragrunt run-all init
-terragrunt run-all plan
+terragrunt stack generate     # materialize .terragrunt-stack/<unit>/ from terragrunt.stack.hcl
+terragrunt stack run init
+terragrunt stack run plan
 
-# A single component:
-cd terragrunt/dev/network
+# A single component (after `stack generate`):
+cd terragrunt/dev/.terragrunt-stack/network
 terragrunt init
 terragrunt plan
 ```
 
-`prod` is identical: `cd terragrunt/prod && terragrunt run-all plan`.
+`prod` and `local` are identical — `cd terragrunt/<env> && terragrunt stack generate && terragrunt stack run plan`.
+For `local`, start floci first (`task docker:up`); its `env.hcl` sets `use_floci = true`, so
+`root.hcl` generates the floci provider (endpoints → `http://localhost:4566`) and a local
+state backend instead of S3/DynamoDB.
 
-> **Apply is intentionally gated through the CD pipeline.** Do not `terragrunt run-all apply`
+### Taskfile targets
+
+The repo's `terragrunt:*` tasks run inside `infra/terragrunt/<env>`:
+
+```bash
+task terragrunt:plan  ENV=dev     # -> cd infra/terragrunt/dev  && terragrunt stack generate && terragrunt stack run plan
+task terragrunt:apply ENV=local   # -> cd infra/terragrunt/local && terragrunt stack generate && terragrunt stack run apply
+```
+
+> **Migration note (for the Taskfile):** Stacks replace `terragrunt run-all <cmd>` with
+> `terragrunt stack generate && terragrunt stack run <cmd>`. Update each `terragrunt:*` target
+> accordingly. `stack generate` is idempotent and cheap, so it's safe to run before every
+> command.
+
+> **Apply is intentionally gated through the CD pipeline.** Do not `terragrunt stack run apply`
 > from a laptop. The pipeline builds/pushes the image to ECR, injects the immutable tag via
 > `IMAGE_TAG`, and applies with the required approvals. Local usage is plan/review only.
 

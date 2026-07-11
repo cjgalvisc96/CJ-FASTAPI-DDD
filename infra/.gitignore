@@ -8,6 +8,8 @@ crash.*.log
 
 # Terragrunt
 .terragrunt-cache/
+# Stacks materialize units here from terragrunt.stack.hcl — generated, never committed.
+.terragrunt-stack/
 
 # Secrets / var files — never commit these
 *.tfvars

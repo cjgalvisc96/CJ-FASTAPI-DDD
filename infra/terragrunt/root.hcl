@@ -76,6 +76,25 @@ locals {
   EOF
 }
 
+# Retry transient AWS/API throttling on apply — inherited by every unit via `include "root"`.
+# These are read-safe retries on rate-limit / throttle errors only; nothing here masks a real
+# resource error. Useful on wide `stack run apply` fan-outs that briefly exceed API rate limits.
+errors {
+  retry "aws_transient_throttling" {
+    retryable_errors = [
+      "(?s).*Throttling.*",
+      "(?s).*ThrottlingException.*",
+      "(?s).*RequestLimitExceeded.*",
+      "(?s).*TooManyRequestsException.*",
+      "(?s).*Rate exceeded.*",
+      "(?s).*ServiceUnavailable.*",
+      "(?s).*operation error.*timeout.*",
+    ]
+    max_attempts       = 3
+    sleep_interval_sec = 8
+  }
+}
+
 # One state file per component. floci → local file backend (no bucket bootstrap); else S3 + DynamoDB.
 remote_state {
   backend = local.use_floci ? "local" : "s3"
