@@ -22,6 +22,9 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
+          # Per-job suffix: quality/test run in parallel and would otherwise race to save the same
+          # cache key ("Unable to reserve cache…" warnings).
+          cache-suffix: quality
       - name: Install go-task
         uses: arduino/setup-task@v3.0.0
         with:
@@ -40,6 +43,7 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
+          cache-suffix: tests
       - name: Install go-task
         uses: arduino/setup-task@v3.0.0
         with:
