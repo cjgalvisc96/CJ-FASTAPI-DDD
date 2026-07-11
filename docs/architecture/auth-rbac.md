@@ -52,7 +52,7 @@ _ctx: RequestContext = Depends(require_role("admin"))
     `RequestContext` so the API can be exercised locally without Keycloak:
 
     ```bash
-    curl -H 'X-Dev-Roles: admin' localhost:8000/api/v1/users
+    curl -H 'X-Dev-Roles: admin' localhost:18000/api/v1/users
     ```
 
     This path is inert in production (`DEBUG=false`).

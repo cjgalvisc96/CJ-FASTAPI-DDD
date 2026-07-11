@@ -10,7 +10,7 @@ vars:
   SRC: src/ddd_app
   COMPOSE: docker compose -f docker/docker-compose.yml
   # Host port is offset (5433) so this stack coexists with sibling projects; see docker-compose.yml.
-  ATLAS_DB_URL: "postgres://ddd:ddd@localhost:5433/ddd?sslmode=disable"
+  ATLAS_DB_URL: "postgres://ddd:ddd@localhost:15432/ddd?sslmode=disable"
   NETWORK: ddd-net
   ENV: '{{.ENV | default "dev"}}'   # target infra environment: dev | prod (override with ENV=prod)
   TG_DIR: "infra/terragrunt"
@@ -104,7 +104,7 @@ tasks:
     desc: Bring up postgres + redis + keycloak + atlas(migrate) + app
     cmds:
       - "{{.COMPOSE}} up -d --build"
-      - echo "API → http://localhost:8001/docs   Keycloak → http://localhost:8081"
+      - echo "API → http://localhost:18000/docs   Keycloak → http://localhost:18080"
 
   docker:down:
     desc: Tear down the stack (keep images)
@@ -126,7 +126,7 @@ tasks:
   docker:smoke:
     desc: Curl health/docs
     cmds:
-      - curl -fsS localhost:8001/health && echo OK
+      - curl -fsS localhost:18000/health && echo OK
 
   # --- Migrations (Atlas via Docker) ---
   atlas:migrate:
@@ -163,7 +163,7 @@ tasks:
     desc: Start floci (local AWS) for `terragrunt:* ENV=local`
     cmds:
       - "{{.COMPOSE}} --profile infra up -d floci"
-      - 'echo "floci is up at http://localhost:4567 — now run task terragrunt:apply ENV=local"'
+      - 'echo "floci is up at http://localhost:14566 — now run task terragrunt:apply ENV=local"'
 
   floci:down:
     desc: Stop floci

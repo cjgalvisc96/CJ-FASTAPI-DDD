@@ -12,7 +12,7 @@ services:
       POSTGRES_USER: ${DB_USER:-ddd}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-ddd}
     ports:
-      - "${POSTGRES_HOST_PORT:-5433}:5432"
+      - "${POSTGRES_HOST_PORT:-15432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks:
@@ -26,7 +26,7 @@ services:
   redis:
     image: redis:7
     ports:
-      - "${REDIS_HOST_PORT:-6380}:6379"
+      - "${REDIS_HOST_PORT:-16379}:6379"
     networks:
       - ddd-net
     healthcheck:
@@ -43,7 +43,7 @@ services:
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
       KC_HTTP_PORT: 8080
     ports:
-      - "${KEYCLOAK_HOST_PORT:-8081}:8080"
+      - "${KEYCLOAK_HOST_PORT:-18080}:8080"
     volumes:
       - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
     networks:
@@ -91,9 +91,9 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       KEYCLOAK_URL: http://keycloak:8080
-      API_PORT: "8000"   # container listens on 8000; host maps it to APP_HOST_PORT (8001)
+      API_PORT: "8000"   # container listens on 8000; host maps it to APP_HOST_PORT (18000)
     ports:
-      - "${APP_HOST_PORT:-8001}:8000"
+      - "${APP_HOST_PORT:-18000}:8000"
     volumes:
       - ../src:/app/src:ro
     networks:
@@ -115,7 +115,7 @@ services:
     environment:
       FLOCI_HOSTNAME: floci
     ports:
-      - "${FLOCI_HOST_PORT:-4567}:4566"
+      - "${FLOCI_HOST_PORT:-14566}:4566"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock   # floci spawns backing containers
       - flocidata:/var/lib/floci

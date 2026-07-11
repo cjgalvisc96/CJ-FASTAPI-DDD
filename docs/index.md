@@ -33,13 +33,13 @@ namespaced Redis cache) while dropping the heavyweight tactical patterns.
 ```bash
 task env:create      # uv venv + deps + .env
 task docker:up       # postgres + redis + keycloak + atlas(migrate) + app
-open http://localhost:8000/docs
+open http://localhost:18000/docs
 ```
 
 With `DEBUG=true`, exercise the API locally without a token via the `X-Dev-Roles` header:
 
 ```bash
-curl -s -X POST localhost:8000/api/v1/users \
+curl -s -X POST localhost:18000/api/v1/users \
   -H 'X-Dev-Roles: admin' -H 'content-type: application/json' \
   -d '{"email":"a@b.com","full_name":"Ada Lovelace","role":"member"}'
 ```

@@ -25,8 +25,8 @@ rate limits, CORS).
     task docker:up      # postgres + redis + keycloak + atlas(migrate) + app
     ```
 
-    - API docs: <http://localhost:8000/docs>
-    - Keycloak: <http://localhost:8080>
+    - API docs: <http://localhost:18000/docs>
+    - Keycloak: <http://localhost:18080>
 
     See [Docker Stack](../operations/docker.md) for service details and bring-up order.
 
@@ -42,7 +42,7 @@ With `DEBUG=true`, the `X-Dev-Roles` header fabricates an authenticated caller (
 [Auth & RBAC](../architecture/auth-rbac.md)):
 
 ```bash
-curl -s -X POST localhost:8000/api/v1/users \
+curl -s -X POST localhost:18000/api/v1/users \
   -H 'X-Dev-Roles: admin' -H 'content-type: application/json' \
   -d '{"email":"a@b.com","full_name":"Ada Lovelace","role":"member"}'
 ```

@@ -51,20 +51,20 @@ dependency-injector · Atlas (migrations) · pytest · ruff · pyright · import
 - **Quality gate**: `task check:all` runs ruff, pyright, import-linter, vulture, and bandit;
   `task test:coverage` runs the parallel/random test suite (coverage ≥ 97%); `task trivy` scans the
   app for dependency CVEs, secrets, and Dockerfile misconfig.
-- **Docs**: a full MkDocs Material site under `docs/` — `task docs:serve` → http://127.0.0.1:8001.
+- **Docs**: a full MkDocs Material site under `docs/` — `task docs:serve` → http://127.0.0.1:8002.
 
 ## Quick start
 
 ```bash
 task env:create      # uv venv + deps + .env
 task docker:up       # postgres + redis + keycloak + atlas(migrate) + app
-open http://localhost:8000/docs
+open http://localhost:18000/docs
 ```
 
 Local dev without a Keycloak token: with `DEBUG=true`, send `X-Dev-Roles: admin` to impersonate roles.
 
 ```bash
-curl -s -X POST localhost:8000/api/v1/users \
+curl -s -X POST localhost:18000/api/v1/users \
   -H 'X-Dev-Roles: admin' -H 'content-type: application/json' \
   -d '{"email":"a@b.com","full_name":"Ada Lovelace","role":"member"}'
 ```
