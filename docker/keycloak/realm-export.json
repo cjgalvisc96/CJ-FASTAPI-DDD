@@ -1,0 +1,47 @@
+{
+  "realm": "ddd",
+  "enabled": true,
+  "roles": {
+    "realm": [
+      { "name": "admin" },
+      { "name": "member" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "ddd-api",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": ["*"],
+      "webOrigins": ["*"]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin-user",
+      "enabled": true,
+      "email": "admin@example.com",
+      "firstName": "Ada",
+      "lastName": "Admin",
+      "emailVerified": true,
+      "credentials": [
+        { "type": "password", "value": "admin", "temporary": false }
+      ],
+      "realmRoles": ["admin", "member"]
+    },
+    {
+      "username": "member-user",
+      "enabled": true,
+      "email": "member@example.com",
+      "firstName": "Max",
+      "lastName": "Member",
+      "emailVerified": true,
+      "credentials": [
+        { "type": "password", "value": "member", "temporary": false }
+      ],
+      "realmRoles": ["member"]
+    }
+  ]
+}

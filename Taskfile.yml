@@ -1,0 +1,228 @@
+version: "3"
+
+silent: true
+
+env:
+  PYTHONPATH: src
+
+vars:
+  PY: uv run
+  SRC: src/ddd_app
+  COMPOSE: docker compose -f docker/docker-compose.yml
+  ATLAS_DB_URL: "postgres://ddd:ddd@localhost:5432/ddd?sslmode=disable"
+  NETWORK: ddd-net
+  ENV: '{{.ENV | default "dev"}}'   # target infra environment: dev | prod (override with ENV=prod)
+  TG_DIR: "infra/terragrunt"
+
+tasks:
+  default:
+    cmds:
+      - task --list
+
+  # --- Environment ---
+  env:create:
+    desc: Create venv, install deps, seed .env
+    cmds:
+      - uv venv
+      - uv sync
+      - "[ -f .env ] || cp .env.example .env"
+      - echo "Env ready. Run 'task docker:up'."
+
+  # --- Quality ---
+  check:linter:
+    desc: Ruff lint + format check
+    cmds:
+      - "{{.PY}} ruff check src tests"
+      - "{{.PY}} ruff format --check src tests"
+
+  check:types:
+    desc: Pyright type check
+    cmds:
+      - "{{.PY}} pyright"
+
+  check:architecture:
+    desc: import-linter contracts
+    cmds:
+      - "{{.PY}} lint-imports"
+
+  check:deadcode:
+    desc: Vulture dead-code scan
+    cmds:
+      - "{{.PY}} vulture"
+
+  check:trivy:
+    desc: Trivy vulnerability + secret + misconfig scan (HIGH/CRITICAL)
+    cmds:
+      - >
+        docker run --rm -v {{.TASKFILE_DIR}}:/repo -w /repo aquasec/trivy:latest fs .
+        --scanners vuln,secret,misconfig --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1
+
+  fix:linter:
+    desc: Ruff autofix + format
+    cmds:
+      - "{{.PY}} ruff check --fix src tests"
+      - "{{.PY}} ruff format src tests"
+
+  check:all:
+    desc: Full quality gate
+    cmds:
+      - task: check:linter
+      - task: check:types
+      - task: check:architecture
+      - task: check:deadcode
+      - task: test:all
+
+  clean:cache:
+    desc: Remove all tool caches (pytest, ruff, import-linter, pyright, coverage, __pycache__)
+    cmds:
+      - >
+        rm -rf .pytest_cache .ruff_cache .import_linter_cache .pyright .mypy_cache
+        .coverage coverage.xml htmlcov .cache
+      - find . -type d -name __pycache__ -prune -exec rm -rf {} + 2>/dev/null || true
+      - echo "Caches removed."
+
+  # --- Tests --- (extra pytest args pass through, e.g. `task test:cov -- --cov-report=xml`)
+  test:all:
+    desc: Run all tests
+    cmds:
+      - "{{.PY}} pytest {{.CLI_ARGS}}"
+
+  test:cov:
+    desc: Run tests with coverage
+    cmds:
+      - "{{.PY}} pytest --cov --cov-report=term-missing {{.CLI_ARGS}}"
+
+  # --- Docker stack ---
+  docker:up:
+    desc: Bring up postgres + redis + keycloak + atlas(migrate) + app
+    cmds:
+      - "{{.COMPOSE}} up -d --build"
+      - echo "API → http://localhost:8000/docs   Keycloak → http://localhost:8080"
+
+  docker:down:
+    desc: Tear down the stack (keep images)
+    cmds:
+      - "{{.COMPOSE}} down -v"
+
+  docker:prune:
+    desc: Remove everything (containers, volumes, images, network) — start from scratch
+    cmds:
+      - "{{.COMPOSE}} down -v --rmi local --remove-orphans"
+      - "docker network rm {{.NETWORK}} 2>/dev/null || true"
+      - echo "Pruned. Run 'task docker:up' to rebuild from scratch."
+
+  docker:logs:
+    desc: Tail the API logs
+    cmds:
+      - "{{.COMPOSE}} logs -f app"
+
+  docker:smoke:
+    desc: Curl health/docs
+    cmds:
+      - curl -fsS localhost:8000/health && echo OK
+
+  # --- Migrations (Atlas via Docker) ---
+  atlas:migrate:
+    desc: Apply migrations to the running Postgres
+    cmds:
+      - >
+        docker run --rm --network host -v {{.TASKFILE_DIR}}/migrations:/migrations
+        arigaio/atlas:latest migrate apply
+        --url "{{.ATLAS_DB_URL}}" --dir file:///migrations/versions
+
+  atlas:status:
+    desc: Show migration status
+    cmds:
+      - >
+        docker run --rm --network host -v {{.TASKFILE_DIR}}/migrations:/migrations
+        arigaio/atlas:latest migrate status
+        --url "{{.ATLAS_DB_URL}}" --dir file:///migrations/versions
+
+  atlas:hash:
+    desc: Recompute atlas.sum
+    cmds:
+      - >
+        docker run --rm -v {{.TASKFILE_DIR}}/migrations:/migrations
+        arigaio/atlas:latest migrate hash --dir file:///migrations/versions
+
+  # --- Seed ---
+  seed:demo:
+    desc: Seed demo users (idempotent)
+    cmds:
+      - "{{.PY}} ddd-seed"
+
+  # --- floci (local AWS emulator for ENV=local) ---
+  floci:up:
+    desc: Start floci (local AWS) for `terragrunt:* ENV=local`
+    cmds:
+      - "{{.COMPOSE}} --profile infra up -d floci"
+      - 'echo "floci is up at http://localhost:4566 — now run task terragrunt:apply ENV=local"'
+
+  floci:down:
+    desc: Stop floci
+    cmds:
+      - "{{.COMPOSE}} --profile infra stop floci"
+
+  # --- Infra (Terragrunt, per ENV) ---
+  # Usage: task terragrunt:plan ENV=dev   |   task terragrunt:apply ENV=prod
+  terragrunt:fmt:
+    desc: Format the Terraform/Terragrunt HCL
+    cmds:
+      - terraform fmt -recursive infra/terraform
+      - cd {{.TG_DIR}} && terragrunt hcl fmt
+
+  terragrunt:validate:
+    desc: Validate the Terragrunt stack for ENV
+    cmds:
+      - cd {{.TG_DIR}}/{{.ENV}} && terragrunt run-all validate --terragrunt-non-interactive
+
+  terragrunt:init:
+    desc: "terragrunt run-all init (ENV=dev|prod)"
+    cmds:
+      - cd {{.TG_DIR}}/{{.ENV}} && terragrunt run-all init --terragrunt-non-interactive
+
+  terragrunt:plan:
+    desc: "terragrunt run-all plan (ENV=dev|prod)"
+    cmds:
+      - cd {{.TG_DIR}}/{{.ENV}} && terragrunt run-all plan --terragrunt-non-interactive
+
+  terragrunt:apply:
+    desc: "terragrunt run-all apply (ENV=dev|prod)"
+    cmds:
+      - cd {{.TG_DIR}}/{{.ENV}} && terragrunt run-all apply --terragrunt-non-interactive
+
+  terragrunt:destroy:
+    desc: "terragrunt run-all destroy (ENV=dev|prod|local)"
+    cmds:
+      - cd {{.TG_DIR}}/{{.ENV}} && terragrunt run-all destroy --terragrunt-non-interactive
+
+  terragrunt:trivy:
+    desc: Trivy IaC misconfig scan of the Terraform/Terragrunt (HIGH/CRITICAL)
+    cmds:
+      - >
+        docker run --rm -v {{.TASKFILE_DIR}}/infra:/infra aquasec/trivy:latest config /infra
+        --severity HIGH,CRITICAL --exit-code 1
+
+  terragrunt:infracost:
+    desc: "Infracost cost breakdown for ENV (needs INFRACOST_API_KEY)"
+    cmds:
+      - infracost breakdown --path {{.TG_DIR}}/{{.ENV}} --format table
+
+  # --- Docs (MkDocs Material) ---
+  docs:serve:
+    desc: Serve the docs site at http://127.0.0.1:8001
+    cmds:
+      - "{{.PY}} --group docs mkdocs serve -a 127.0.0.1:8001"
+
+  docs:build:
+    desc: Build the static docs site
+    cmds:
+      - "{{.PY}} --group docs mkdocs build --strict"
+
+  # --- Run API locally (needs postgres+redis reachable) ---
+  api:
+    desc: Run the API with reload
+    env:
+      API_RELOAD: "1"
+    cmds:
+      - "{{.PY}} ddd-api"

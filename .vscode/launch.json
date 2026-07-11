@@ -1,0 +1,40 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "FastAPI (uvicorn, reload)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": [
+        "ddd_app.presentation.api.main:app",
+        "--host", "0.0.0.0",
+        "--port", "8000",
+        "--reload"
+      ],
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" },
+      "envFile": "${workspaceFolder}/.env",
+      "justMyCode": false
+    },
+    {
+      "name": "Pytest (current file)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["${file}", "-v", "-n0", "-p", "no:randomly", "-o", "addopts="],
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" },
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Pytest (all, serial)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["-v", "-n0", "-p", "no:randomly", "-o", "addopts="],
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" },
+      "console": "integratedTerminal",
+      "justMyCode": false
+    }
+  ]
+}

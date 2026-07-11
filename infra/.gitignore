@@ -1,0 +1,19 @@
+# Terraform
+.terraform/
+.terraform.tfstate.lock.info
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+# Terragrunt
+.terragrunt-cache/
+
+# Secrets / var files — never commit these
+*.tfvars
+*.tfvars.json
+!example.tfvars
+
+# Provider lock file — optional to commit; ignored here to avoid arch-specific churn.
+# Remove the next line if you prefer to pin the lock file per module.
+.terraform.lock.hcl

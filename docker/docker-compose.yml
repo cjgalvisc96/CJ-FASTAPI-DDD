@@ -1,0 +1,124 @@
+name: cj-fastapi-ddd
+
+# Dedicated project network so every service resolves the others by name and nothing leaks onto the
+# host default bridge. `task docker:prune` removes it for a from-scratch rebuild.
+networks:
+  ddd-net:
+    name: ddd-net
+    driver: bridge
+
+services:
+  # Local AWS emulator — lets `task terragrunt:* ENV=local` provision the full serverless stack
+  # (Aurora, ElastiCache, Lambda, API Gateway, Cognito, ECR, Secrets Manager, …) against floci
+  # instead of real AWS. All services are served at http://localhost:4566.
+  floci:
+    image: floci/floci:latest
+    container_name: ddd-floci
+    # Opt-in only (it spawns backing containers via docker.sock): `docker compose --profile infra up`
+    # or `task floci:up`. Not part of the default app stack.
+    profiles: ["infra"]
+    environment:
+      FLOCI_HOSTNAME: floci   # so URLs resolve between containers
+    ports:
+      - "4566:4566"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock   # floci spawns backing containers
+      - flocidata:/var/lib/floci
+    networks:
+      - ddd-net
+
+  postgres:
+    image: postgres:16
+    container_name: ddd-postgres
+    environment:
+      POSTGRES_USER: ddd
+      POSTGRES_PASSWORD: ddd
+      POSTGRES_DB: ddd
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - ddd-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ddd -d ddd"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7
+    container_name: ddd-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - ddd-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: ddd-keycloak
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "8080:8080"
+    networks:
+      - ddd-net
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+
+  atlas:
+    image: arigaio/atlas:latest
+    container_name: ddd-atlas
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      migrate apply
+      --url "postgres://ddd:ddd@postgres:5432/ddd?sslmode=disable"
+      --dir "file:///migrations/versions"
+    networks:
+      - ddd-net
+    volumes:
+      - ../migrations:/migrations:ro
+    restart: "no"
+
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: dev
+    image: local/cj-fastapi-ddd:dev
+    container_name: ddd-api
+    # Base settings come from the project .env; the values below only override the host names so the
+    # app reaches the sibling containers by service name instead of localhost.
+    env_file:
+      - ../.env
+    environment:
+      DB_HOST: postgres
+      REDIS_HOST: redis
+      KEYCLOAK_URL: http://keycloak:8080
+    ports:
+      - "8000:8000"
+    networks:
+      - ddd-net
+    volumes:
+      - ../src:/app/src:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      atlas:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:
+  flocidata:

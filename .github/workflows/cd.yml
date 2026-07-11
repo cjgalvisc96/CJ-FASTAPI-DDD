@@ -1,0 +1,116 @@
+name: CD (infra)
+
+# Plans the Terragrunt-managed AWS serverless infrastructure, scans it, and estimates cost.
+# The apply/deploy step is intentionally DISABLED for now (see the `deploy` job).
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        type: choice
+        options: [dev, prod]
+        default: dev
+  push:
+    branches: [main]
+    paths:
+      - "infra/**"
+      - ".github/workflows/cd.yml"
+
+permissions:
+  contents: read
+  id-token: write        # for AWS OIDC role assumption
+  pull-requests: write   # for the Infracost PR comment
+
+env:
+  TF_VERSION: "1.9.5"
+  TG_VERSION: "0.67.4"
+  ENVIRONMENT: ${{ github.event.inputs.environment || 'dev' }}
+
+jobs:
+  plan:
+    name: Terragrunt init + plan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Setup Terragrunt
+        run: |
+          curl -sL "https://github.com/gruntwork-io/terragrunt/releases/download/v${TG_VERSION}/terragrunt_linux_amd64" -o /usr/local/bin/terragrunt
+          chmod +x /usr/local/bin/terragrunt
+          terragrunt --version
+
+      - name: Setup Task
+        uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+
+      # Requires an AWS OIDC deploy role ARN in repo variables. Plan needs read access to state + AWS.
+      - name: Configure AWS credentials
+        if: ${{ vars.AWS_DEPLOY_ROLE_ARN != '' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+      - name: Terragrunt init
+        run: task terragrunt:init ENV=${ENVIRONMENT}
+
+      - name: Terragrunt plan
+        run: task terragrunt:plan ENV=${ENVIRONMENT}
+
+  trivy-iac:
+    name: Trivy IaC misconfig scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Task
+        uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+      - name: Trivy IaC scan
+        run: task terragrunt:trivy
+
+  # Infracost cost estimation is intentionally DISABLED for now.
+  # To re-enable: remove `if: false`, ensure the INFRACOST_API_KEY secret is set, and add
+  # `infracost` back to the `deploy` job's `needs:` list.
+  infracost:
+    name: Infracost cost estimate (DISABLED)
+    if: false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Infracost
+        uses: infracost/actions/setup@v3
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
+
+      - name: Setup Task
+        uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+
+      - name: Infracost breakdown
+        env:
+          INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
+        run: task terragrunt:infracost ENV=${ENVIRONMENT}
+
+  deploy:
+    name: Deploy (DISABLED)
+    needs: [plan, trivy-iac]
+    runs-on: ubuntu-latest
+    # Deploy is intentionally skipped for now. To enable: remove `if: false`, add an
+    # `environment:` with required reviewers, and swap the echo for:
+    #   task terragrunt:apply ENV=${ENVIRONMENT}
+    if: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Placeholder (apply is disabled)
+        run: echo "Deploy step is intentionally disabled — plan + scan only. Use 'task terragrunt:apply ENV=${ENVIRONMENT}'."

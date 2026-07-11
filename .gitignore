@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+build/
+dist/
+
+# uv — uv.lock IS committed for reproducible builds
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.import_linter_cache/
+.pyright/
+.coverage
+htmlcov/
+coverage.xml
+
+# Env / secrets
+.env
+
+# MkDocs build output
+site/
+
+# Terraform / Terragrunt
+**/.terraform/
+*.tfstate
+*.tfstate.*
+.terragrunt-cache/
+*.local.tfvars
+
+# OS
+.DS_Store
