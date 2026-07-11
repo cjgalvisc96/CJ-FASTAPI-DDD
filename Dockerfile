@@ -10,11 +10,13 @@ WORKDIR /app
 FROM base AS builder
 # README.md is required by hatchling (pyproject `readme = "README.md"`) when the project wheel builds.
 COPY pyproject.toml uv.lock* README.md ./
+# Runtime venv only: project deps + `observability` (OTel is imported at startup) + `aws` (Lambda
+# stage). `--no-default-groups` keeps dev/test tooling (pytest, ruff, …) OUT of the shipped images.
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --no-install-project --no-dev || uv sync --no-install-project
+    uv sync --no-install-project --no-default-groups --group aws --group observability
 COPY src ./src
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --no-editable --no-dev || uv sync --no-editable
+    uv sync --no-editable --no-default-groups --group aws --group observability
 
 FROM base AS dev
 COPY --from=builder /opt/venv /opt/venv

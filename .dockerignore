@@ -1,4 +1,7 @@
 # Keep the build context small — none of these belong in any image.
+# .env: compose injects it at runtime (env_file); baking it into layers would freeze stale config
+# and copy local secrets into the image.
+.env
 .git
 .venv
 site/

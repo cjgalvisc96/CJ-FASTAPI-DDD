@@ -13,6 +13,8 @@ import os
 
 from mangum import Mangum
 
+from ddd_app.core.config import get_settings
+from ddd_app.core.telemetry import setup_telemetry
 from ddd_app.presentation.api.app import create_app
 
 
@@ -37,5 +39,7 @@ def load_db_credentials_from_secret() -> None:
 # Credentials must be in the environment before create_app() builds Settings.
 load_db_credentials_from_secret()
 app = create_app()
+# No-op unless OTEL_ENABLE=true — point OTEL_EXPORTER_OTLP_ENDPOINT at a collector (e.g. ADOT).
+setup_telemetry(app, get_settings())
 # lifespan="off": create_app wires state synchronously, and Lambda has no reliable shutdown hook.
 handler = Mangum(app, lifespan="off")

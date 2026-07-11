@@ -26,7 +26,9 @@ domain-exception → HTTP mapping, namespaced Redis cache) but drops the heavywe
 ## Stack
 
 Python 3.14 · uv · FastAPI · SQLAlchemy 2.0 (async, asyncpg) · PostgreSQL · Redis · Keycloak ·
-dependency-injector · Atlas (migrations) · pytest · ruff · pyright · import-linter · Docker.
+dependency-injector · Atlas (migrations) · OpenTelemetry (Grafana LGTM) · Mangum (AWS Lambda) ·
+Terraform + Terragrunt · pytest · ruff · pyright · import-linter · vulture · Bandit · Trivy ·
+go-task · MkDocs · Docker.
 
 ## Layout
 

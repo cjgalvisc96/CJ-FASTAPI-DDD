@@ -69,9 +69,10 @@ Host ports follow the project's offset scheme: Grafana **13000**, OTLP gRPC **14
 **14318** (overridable via `GRAFANA_HOST_PORT` / `OTLP_*_HOST_PORT`).
 
 !!! note "AWS"
-    On Lambda, point `OTEL_EXPORTER_OTLP_ENDPOINT` at a collector (e.g. an ADOT sidecar/extension or
-    a hosted OTLP endpoint) and set `OTEL_ENABLE=true` via the `api` module's environment. The LGTM
-    container is a **local dev** backend, not a production one.
+    The Lambda entrypoint (`lambda_handler.py`) calls `setup_telemetry` too — set `OTEL_ENABLE=true`
+    and point `OTEL_EXPORTER_OTLP_ENDPOINT` at a collector (e.g. an ADOT extension or a hosted OTLP
+    endpoint) via the `api` module's environment. The LGTM container is a **local dev** backend, not
+    a production one.
 
 ## Testing
 
