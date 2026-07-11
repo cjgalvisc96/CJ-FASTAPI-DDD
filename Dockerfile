@@ -8,7 +8,8 @@ ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
 WORKDIR /app
 
 FROM base AS builder
-COPY pyproject.toml uv.lock* ./
+# README.md is required by hatchling (pyproject `readme = "README.md"`) when the project wheel builds.
+COPY pyproject.toml uv.lock* README.md ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --no-install-project --no-dev || uv sync --no-install-project
 COPY src ./src
