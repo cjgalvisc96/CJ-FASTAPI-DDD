@@ -43,7 +43,7 @@ task check:architecture   # just the import-linter contracts
 - **Ports are faked** in unit tests (e.g. an in-memory user repository) so use cases run without
   infrastructure.
 - **Keycloak** is unit-tested without a live server: the test generates an **RSA key pair**, signs a
-  token, and fakes the JWKS endpoint so `KeycloakAuthenticator` verifies against the test key. See
+  token, and fakes the JWKS endpoint so `OidcAuthenticator` verifies against the test key. See
   [Auth & RBAC](../architecture/auth-rbac.md).
 
 Tests run via `task test:coverage` (the CI `test` job); the quality gates run via `task check:all`.

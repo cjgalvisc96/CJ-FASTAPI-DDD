@@ -43,7 +43,7 @@ async def get_request_context(
     ctx: RequestContext | None = None
     token = _bearer_token(authorization)
     if token:
-        authenticator = container.users.keycloak_authenticator()
+        authenticator = container.users.oidc_authenticator()
         try:
             claims = await authenticator.verify(token)
         except AuthenticationError as exc:

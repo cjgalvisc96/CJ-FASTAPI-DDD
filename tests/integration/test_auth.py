@@ -10,19 +10,17 @@ from dependency_injector import providers
 from httpx import ASGITransport, AsyncClient
 
 from ddd_app.contexts.shared.domain.exceptions import AuthenticationError
-from ddd_app.contexts.users.infrastructure.auth.keycloak import KeycloakClaims
+from ddd_app.contexts.users.infrastructure.auth.oidc import OidcClaims
 from ddd_app.core.config import Settings
 from ddd_app.presentation.api.app import create_app
 
 
 class FakeAuthenticator:
-    def __init__(
-        self, claims: KeycloakClaims | None = None, error: Exception | None = None
-    ) -> None:
+    def __init__(self, claims: OidcClaims | None = None, error: Exception | None = None) -> None:
         self._claims = claims
         self._error = error
 
-    async def verify(self, token: str) -> KeycloakClaims:
+    async def verify(self, token: str) -> OidcClaims:
         if self._error is not None:
             raise self._error
         assert self._claims is not None
@@ -39,8 +37,8 @@ async def _client(container):
 
 
 async def test_valid_bearer_token_authenticates(container) -> None:
-    claims = KeycloakClaims(subject=uuid.uuid4(), email="a@b.com", roles=frozenset({"admin"}))
-    container.users.keycloak_authenticator.override(providers.Object(FakeAuthenticator(claims)))
+    claims = OidcClaims(subject=uuid.uuid4(), email="a@b.com", roles=frozenset({"admin"}))
+    container.users.oidc_authenticator.override(providers.Object(FakeAuthenticator(claims)))
     client, manager = await _client(container)
     try:
         resp = await client.get("/api/v1/users", headers={"Authorization": "Bearer good-token"})
@@ -51,7 +49,7 @@ async def test_valid_bearer_token_authenticates(container) -> None:
 
 
 async def test_invalid_bearer_token_is_401(container) -> None:
-    container.users.keycloak_authenticator.override(
+    container.users.oidc_authenticator.override(
         providers.Object(FakeAuthenticator(error=AuthenticationError("bad")))
     )
     client, manager = await _client(container)

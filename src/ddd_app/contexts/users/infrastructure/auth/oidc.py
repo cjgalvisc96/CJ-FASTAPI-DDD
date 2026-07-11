@@ -23,13 +23,13 @@ _JWKS_TTL_SECONDS = 3600
 
 
 @dataclass(frozen=True, slots=True)
-class KeycloakClaims:
+class OidcClaims:
     subject: UUID
     email: str | None
     roles: frozenset[str] = field(default_factory=frozenset)
 
 
-class KeycloakAuthenticator:
+class OidcAuthenticator:
     def __init__(
         self,
         *,
@@ -64,7 +64,7 @@ class KeycloakAuthenticator:
                 return key
         raise AuthenticationError("Signing key not found in JWKS")
 
-    async def verify(self, token: str) -> KeycloakClaims:
+    async def verify(self, token: str) -> OidcClaims:
         try:
             header = jwt.get_unverified_header(token)
             jwks = await self._get_jwks()
@@ -83,7 +83,7 @@ class KeycloakAuthenticator:
         return self._to_claims(claims)
 
     @staticmethod
-    def _to_claims(claims: dict) -> KeycloakClaims:
+    def _to_claims(claims: dict) -> OidcClaims:
         raw_sub = claims.get("sub")
         if not raw_sub:
             raise AuthenticationError("Missing 'sub' claim")
@@ -96,7 +96,7 @@ class KeycloakAuthenticator:
         realm_roles = (claims.get("realm_access") or {}).get("roles") or []
         cognito_groups = claims.get("cognito:groups") or []
         email = claims.get("email") or claims.get("preferred_username")
-        return KeycloakClaims(
+        return OidcClaims(
             subject=subject,
             email=email,
             roles=frozenset(str(r).lower() for r in [*realm_roles, *cognito_groups]),

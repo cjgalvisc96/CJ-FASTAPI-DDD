@@ -52,7 +52,7 @@ a **sibling** to `domain/`, `application/`, `infrastructure/` — never nested i
 ## Auth & RBAC (Keycloak)
 
 - Access tokens are verified against the realm JWKS (RS256) in
-  `users/infrastructure/auth/keycloak.py`; roles come from `realm_access.roles`. Authorization is the
+  `users/infrastructure/auth/oidc.py`; roles come from `realm_access.roles`. Authorization is the
   `require_role(...)` dependency. Never put token parsing in the domain or a router body.
 
 ## Single-tenant

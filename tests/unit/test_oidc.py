@@ -1,4 +1,4 @@
-"""Unit tests for the Keycloak verifier using a locally generated RSA key + fake JWKS endpoint."""
+"""Unit tests for the OIDC verifier (Keycloak- and Cognito-shaped tokens) via a fake JWKS."""
 
 from __future__ import annotations
 
@@ -11,8 +11,8 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from jose import jwk, jwt
 
 from ddd_app.contexts.shared.domain.exceptions import AuthenticationError
-from ddd_app.contexts.users.infrastructure.auth import keycloak as kc_module
-from ddd_app.contexts.users.infrastructure.auth.keycloak import KeycloakAuthenticator
+from ddd_app.contexts.users.infrastructure.auth import oidc as oidc_module
+from ddd_app.contexts.users.infrastructure.auth.oidc import OidcAuthenticator
 
 _ISSUER = "http://kc:8080/realms/ddd"
 _CLIENT = "ddd-api"
@@ -75,12 +75,12 @@ class _FakeClient:
 
 
 @pytest.fixture
-def authenticator(rsa_material: dict, monkeypatch: pytest.MonkeyPatch) -> KeycloakAuthenticator:
+def authenticator(rsa_material: dict, monkeypatch: pytest.MonkeyPatch) -> OidcAuthenticator:
     def fake_async_client(*args, **kwargs) -> _FakeClient:
         return _FakeClient(rsa_material["jwks"])
 
-    monkeypatch.setattr(kc_module.httpx, "AsyncClient", fake_async_client)
-    return KeycloakAuthenticator(
+    monkeypatch.setattr(oidc_module.httpx, "AsyncClient", fake_async_client)
+    return OidcAuthenticator(
         issuer=_ISSUER,
         jwks_url=f"{_ISSUER}/protocol/openid-connect/certs",
         client_id=_CLIENT,
@@ -88,7 +88,7 @@ def authenticator(rsa_material: dict, monkeypatch: pytest.MonkeyPatch) -> Keyclo
     )
 
 
-async def test_verify_valid_token(authenticator: KeycloakAuthenticator, rsa_material: dict) -> None:
+async def test_verify_valid_token(authenticator: OidcAuthenticator, rsa_material: dict) -> None:
     token = _make_token(rsa_material)
     claims = await authenticator.verify(token)
     assert claims.email == "ada@example.com"
@@ -96,40 +96,34 @@ async def test_verify_valid_token(authenticator: KeycloakAuthenticator, rsa_mate
     assert isinstance(claims.subject, uuid.UUID)
 
 
-async def test_jwks_is_cached(authenticator: KeycloakAuthenticator, rsa_material: dict) -> None:
+async def test_jwks_is_cached(authenticator: OidcAuthenticator, rsa_material: dict) -> None:
     token = _make_token(rsa_material)
     await authenticator.verify(token)
     # Second call should reuse the cached JWKS (fetched_at set); still succeeds.
     await authenticator.verify(token)
 
 
-async def test_missing_sub_rejected(
-    authenticator: KeycloakAuthenticator, rsa_material: dict
-) -> None:
+async def test_missing_sub_rejected(authenticator: OidcAuthenticator, rsa_material: dict) -> None:
     token = _make_token(rsa_material, sub="")
     with pytest.raises(AuthenticationError):
         await authenticator.verify(token)
 
 
-async def test_non_uuid_sub_rejected(
-    authenticator: KeycloakAuthenticator, rsa_material: dict
-) -> None:
+async def test_non_uuid_sub_rejected(authenticator: OidcAuthenticator, rsa_material: dict) -> None:
     token = _make_token(rsa_material, sub="not-a-uuid")
     with pytest.raises(AuthenticationError):
         await authenticator.verify(token)
 
 
 async def test_wrong_audience_rejected(
-    authenticator: KeycloakAuthenticator, rsa_material: dict
+    authenticator: OidcAuthenticator, rsa_material: dict
 ) -> None:
     token = _make_token(rsa_material, aud="someone-else")
     with pytest.raises(AuthenticationError):
         await authenticator.verify(token)
 
 
-async def test_unknown_kid_rejected(
-    authenticator: KeycloakAuthenticator, rsa_material: dict
-) -> None:
+async def test_unknown_kid_rejected(authenticator: OidcAuthenticator, rsa_material: dict) -> None:
     token = jwt.encode(
         {"sub": str(uuid.uuid4()), "iss": _ISSUER, "aud": _CLIENT, "exp": int(time.time()) + 3600},
         rsa_material["private_pem"],
@@ -141,7 +135,7 @@ async def test_unknown_kid_rejected(
 
 
 async def test_prefers_preferred_username_when_no_email(
-    authenticator: KeycloakAuthenticator, rsa_material: dict
+    authenticator: OidcAuthenticator, rsa_material: dict
 ) -> None:
     token = _make_token(rsa_material, email=None, preferred_username="ada")
     claims = await authenticator.verify(token)
@@ -152,7 +146,7 @@ async def test_prefers_preferred_username_when_no_email(
 
 
 async def test_cognito_groups_map_to_roles(
-    authenticator: KeycloakAuthenticator, rsa_material: dict
+    authenticator: OidcAuthenticator, rsa_material: dict
 ) -> None:
     """A Cognito-shaped token (no realm_access, roles in cognito:groups) yields the same roles."""
     token = _make_token(rsa_material, realm_access=None, **{"cognito:groups": ["Admin", "member"]})
@@ -169,8 +163,8 @@ async def test_cognito_issuer_shape_works(
     def fake_async_client(*args, **kwargs) -> _FakeClient:
         return _FakeClient(rsa_material["jwks"])
 
-    monkeypatch.setattr(kc_module.httpx, "AsyncClient", fake_async_client)
-    authenticator = KeycloakAuthenticator(
+    monkeypatch.setattr(oidc_module.httpx, "AsyncClient", fake_async_client)
+    authenticator = OidcAuthenticator(
         issuer=cognito_issuer,
         jwks_url=f"{cognito_issuer}/.well-known/jwks.json",
         client_id=_CLIENT,

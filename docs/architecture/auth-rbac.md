@@ -5,7 +5,7 @@ resource server: it verifies access tokens but never handles passwords.
 
 ## Token verification
 
-`KeycloakAuthenticator` (`contexts/users/infrastructure/auth/keycloak.py`) verifies an OIDC access
+`OidcAuthenticator` (`contexts/users/infrastructure/auth/oidc.py`) verifies an OIDC access
 token:
 
 - **Signature** — RS256, checked against the realm's published **JWKS** (fetched from
@@ -13,7 +13,7 @@ token:
 - **Issuer** — must equal `{KEYCLOAK_URL}/realms/{REALM}`.
 - **Expiry** — enforced by the JWT decode; **audience** is optional (`verify_audience`).
 
-On success it extracts `KeycloakClaims`: `sub → user_id` (UUID), `email` (or `preferred_username`),
+On success it extracts `OidcClaims`: `sub → user_id` (UUID), `email` (or `preferred_username`),
 and roles from `realm_access.roles` **and/or** `cognito:groups` (lower-cased). It is framework-free —
 it raises the shared `AuthenticationError` and knows nothing about HTTP.
 
@@ -29,13 +29,13 @@ sequenceDiagram
     participant C as Client
     participant KC as Keycloak
     participant API as FastAPI route
-    participant A as KeycloakAuthenticator
+    participant A as OidcAuthenticator
     C->>KC: authenticate (OIDC)
     KC-->>C: access token (RS256)
     C->>API: request + Bearer token
     API->>A: verify(token)
     A->>KC: GET realm JWKS (cached)
-    A-->>API: KeycloakClaims (user_id, email, roles)
+    A-->>API: OidcClaims (user_id, email, roles)
     API-->>C: 200 / 401 / 403
 ```
 

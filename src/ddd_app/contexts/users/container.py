@@ -9,7 +9,7 @@ from ddd_app.contexts.users.application.commands.register_user import RegisterUs
 from ddd_app.contexts.users.application.queries.get_user import GetUserByIdQuery
 from ddd_app.contexts.users.application.queries.list_users import ListUsersQuery
 from ddd_app.contexts.users.domain.services.email_uniqueness import EmailUniquenessChecker
-from ddd_app.contexts.users.infrastructure.auth.keycloak import KeycloakAuthenticator
+from ddd_app.contexts.users.infrastructure.auth.oidc import OidcAuthenticator
 from ddd_app.contexts.users.infrastructure.db.repositories.sqlalchemy_user_repository import (
     SqlAlchemyUserRepository,
 )
@@ -33,8 +33,8 @@ class UsersContainer(containers.DeclarativeContainer):
     list_users_query = providers.Factory(ListUsersQuery, repository=user_repository)
 
     # Effective OIDC endpoints: explicit OIDC_* overrides (e.g. Cognito) or Keycloak-derived.
-    keycloak_authenticator = providers.Singleton(
-        KeycloakAuthenticator,
+    oidc_authenticator = providers.Singleton(
+        OidcAuthenticator,
         issuer=config.oidc_issuer_effective,
         jwks_url=config.oidc_jwks_url_effective,
         client_id=config.oidc_client_id_effective,
